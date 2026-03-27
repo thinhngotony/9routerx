@@ -183,19 +183,30 @@ start_9router_daemon() {
     return
   fi
 
-  if pgrep -f "9router" >/dev/null 2>&1; then
-    log "9router already running"
+  local startup_log="$HOME/.9router/startup.log"
+  local router_bin
+  router_bin="$(command -v 9router || true)"
+
+  if [[ -z "$router_bin" ]]; then
+    warn "9router binary not found in PATH after install"
     return
   fi
 
-  log "Starting 9router daemon (no-browser, port 20128)"
-  nohup 9router --no-browser --port 20128 >> "$HOME/.9router/startup.log" 2>&1 &
+  # Match the actual binary path to avoid false positives.
+  if pgrep -f "$router_bin" >/dev/null 2>&1; then
+    log "9router already running ($router_bin)"
+    return
+  fi
+
+  touch "$startup_log"
+  log "Starting 9router daemon (no-browser, host 0.0.0.0, port 20128)"
+  nohup "$router_bin" --no-browser --host 0.0.0.0 --port 20128 >> "$startup_log" 2>&1 &
   sleep 3
 
-  if pgrep -f "9router" >/dev/null 2>&1; then
-    log "9router started — open http://$(hostname -I | awk '{print $1}'):20128 in your browser"
+  if pgrep -f "$router_bin" >/dev/null 2>&1; then
+    log "9router started — open http://YOUR_SERVER_IP:20128 in your browser"
   else
-    warn "9router may have failed to start — check ~/.9router/startup.log"
+    warn "9router failed to start — inspect $startup_log"
   fi
 }
 
