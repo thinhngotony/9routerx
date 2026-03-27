@@ -43,6 +43,12 @@ chmod +x scripts/bootstrap-vps.sh
 ./scripts/bootstrap-vps.sh root@YOUR_VPS_IP 22
 ```
 
+Refresh only Cursor tokens (skip reinstall):
+
+```bash
+./scripts/bootstrap-vps.sh --sync-only root@YOUR_VPS_IP 22
+```
+
 This command:
 - extracts `cursorAuth/*` tokens from your local Cursor DB
 - transfers them to VPS over SSH (base64-encoded env vars)

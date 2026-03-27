@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+MODE="install"
+if [[ "${1:-}" == "--sync-only" ]]; then
+  MODE="sync-only"
+  shift
+fi
+
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <user@host> [ssh_port]"
-  echo "Example: $0 root@203.0.113.10 22"
+  echo "Usage: $0 [--sync-only] <user@host> [ssh_port]"
+  echo "Examples:"
+  echo "  $0 root@203.0.113.10 22"
+  echo "  $0 --sync-only root@203.0.113.10 22"
   exit 1
 fi
 
@@ -75,9 +83,13 @@ ACCESS_B64="$(printf '%s' "$CURSOR_ACCESS_TOKEN" | base64 | tr -d '\n')"
 REFRESH_B64="$(printf '%s' "$CURSOR_REFRESH_TOKEN" | base64 | tr -d '\n')"
 EMAIL_B64="$(printf '%s' "$CURSOR_EMAIL" | base64 | tr -d '\n')"
 
-log "Connecting to ${TARGET_HOST} and running remote installer"
+if [[ "$MODE" == "sync-only" ]]; then
+  log "Connecting to ${TARGET_HOST} and refreshing Cursor tokens only"
+else
+  log "Connecting to ${TARGET_HOST} and running remote installer"
+fi
 ssh -p "$SSH_PORT" "$TARGET_HOST" \
-  "CURSOR_ACCESS_TOKEN_B64='$ACCESS_B64' CURSOR_REFRESH_TOKEN_B64='$REFRESH_B64' CURSOR_EMAIL_B64='$EMAIL_B64' bash -s" <<'REMOTE'
+  "CURSOR_ACCESS_TOKEN_B64='$ACCESS_B64' CURSOR_REFRESH_TOKEN_B64='$REFRESH_B64' CURSOR_EMAIL_B64='$EMAIL_B64' BOOTSTRAP_MODE='$MODE' bash -s" <<'REMOTE'
 set -euo pipefail
 
 decode_b64() {
@@ -93,9 +105,43 @@ export CURSOR_ACCESS_TOKEN="$(decode_b64 "${CURSOR_ACCESS_TOKEN_B64}")"
 export CURSOR_REFRESH_TOKEN="$(decode_b64 "${CURSOR_REFRESH_TOKEN_B64}")"
 export CURSOR_EMAIL="$(decode_b64 "${CURSOR_EMAIL_B64}")"
 
-curl -sfS https://9routerx.thinhngo-tony.workers.dev/install | sh
+if [[ "${BOOTSTRAP_MODE:-install}" == "sync-only" ]]; then
+  mkdir -p "$HOME/.config/Cursor/User/globalStorage" "$HOME/.config/cursor/User/globalStorage"
+  python3 - <<'PY'
+import os
+import sqlite3
+
+access = os.environ.get("CURSOR_ACCESS_TOKEN", "")
+refresh = os.environ.get("CURSOR_REFRESH_TOKEN", "")
+email = os.environ.get("CURSOR_EMAIL", "")
+
+paths = [
+    os.path.expanduser("~/.config/Cursor/User/globalStorage/state.vscdb"),
+    os.path.expanduser("~/.config/cursor/User/globalStorage/state.vscdb"),
+]
+
+for db_path in paths:
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)")
+    cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/accessToken", access))
+    cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/refreshToken", refresh))
+    if email:
+        cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/cachedEmail", email))
+    conn.commit()
+    conn.close()
+print("Cursor token sync complete")
+PY
+else
+  curl -sfS https://9routerx.thinhngo-tony.workers.dev/install | sh
+fi
 REMOTE
 
-log "Bootstrap complete on ${TARGET_HOST}"
-log "Open: http://${TARGET_HOST#*@}:20128"
+if [[ "$MODE" == "sync-only" ]]; then
+  log "Token sync complete on ${TARGET_HOST}"
+else
+  log "Bootstrap complete on ${TARGET_HOST}"
+  log "Open: http://${TARGET_HOST#*@}:20128"
+fi
 
