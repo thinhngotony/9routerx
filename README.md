@@ -25,6 +25,16 @@ Plus automatic sync of Claude settings whenever 9router tunnel/model routing cha
 curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh
 ```
 
+Installer supports mode selection:
+
+```sh
+# Local machine with Cursor IDE login
+curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh -s -- --local-cursor
+
+# VPS gateway (headless, Cursor optional)
+curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh -s -- --vps-headless
+```
+
 Alternative (local clone):
 
 ```bash
@@ -53,6 +63,16 @@ This command:
 - extracts `cursorAuth/*` tokens from your local Cursor DB
 - transfers them to VPS over SSH (base64-encoded env vars)
 - runs the remote installer with token seeding
+
+Recommended flow:
+
+```bash
+# First-time VPS setup in headless mode
+curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh -s -- --vps-headless
+
+# Later, sync Cursor tokens from your local machine (optional provider)
+./scripts/bootstrap-vps.sh --sync-only root@YOUR_VPS_IP 22
+```
 
 After `9router` install/login/setup is done by user, run:
 

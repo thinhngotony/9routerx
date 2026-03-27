@@ -38,5 +38,5 @@ chmod +x \
   "${INSTALL_HOME}/scripts/sync/9router_claude_sync.py" \
   "${INSTALL_HOME}/scripts/sync/install_sync_cron.sh"
 
-exec "${INSTALL_HOME}/scripts/install.sh"
+exec "${INSTALL_HOME}/scripts/install.sh" "$@"
 

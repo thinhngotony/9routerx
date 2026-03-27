@@ -134,7 +134,7 @@ for db_path in paths:
 print("Cursor token sync complete")
 PY
 else
-  curl -sfS https://9routerx.thinhngo-tony.workers.dev/install | sh
+  curl -sfS https://9routerx.thinhngo-tony.workers.dev/install | sh -s -- --vps-headless
 fi
 REMOTE
 

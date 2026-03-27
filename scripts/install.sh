@@ -3,11 +3,115 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OS="$(uname -s)"
+MODE=""
+INSTALL_CURSOR="auto"
 
 log() { printf "[9routerx] %s\n" "$*"; }
 warn() { printf "[9routerx][warn] %s\n" "$*" >&2; }
 
 has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+usage() {
+  cat <<EOF
+Usage: $0 [options]
+
+Options:
+  --mode <local-cursor|vps-headless|auto>   Install strategy.
+  --local-cursor                             Shortcut for --mode local-cursor.
+  --vps-headless                             Shortcut for --mode vps-headless.
+  --install-cursor                           Force Cursor install attempt.
+  --skip-cursor-install                      Skip Cursor install step.
+  -h, --help                                 Show this help message.
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --mode)
+        MODE="${2:-}"
+        shift 2
+        ;;
+      --local-cursor)
+        MODE="local-cursor"
+        shift
+        ;;
+      --vps-headless)
+        MODE="vps-headless"
+        shift
+        ;;
+      --install-cursor)
+        INSTALL_CURSOR="yes"
+        shift
+        ;;
+      --skip-cursor-install)
+        INSTALL_CURSOR="no"
+        shift
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        warn "Unknown option: $1"
+        usage
+        exit 1
+        ;;
+    esac
+  done
+}
+
+choose_mode_if_needed() {
+  if [[ -n "$MODE" ]]; then
+    return
+  fi
+
+  # For interactive terminals, let user choose explicitly.
+  if [[ -t 0 ]]; then
+    echo
+    echo "Choose install mode:"
+    echo "  1) local-cursor  (this machine runs Cursor IDE login)"
+    echo "  2) vps-headless  (server gateway, optional token sync from local machine)"
+    echo "  3) auto          (Linux -> vps-headless, others -> local-cursor)"
+    printf "Select [1/2/3, default=3]: "
+    read -r choice
+    case "${choice:-3}" in
+      1) MODE="local-cursor" ;;
+      2) MODE="vps-headless" ;;
+      3|"") MODE="auto" ;;
+      *)
+        warn "Invalid choice: ${choice}"
+        exit 1
+        ;;
+    esac
+    return
+  fi
+
+  MODE="auto"
+}
+
+resolve_mode() {
+  choose_mode_if_needed
+
+  case "$MODE" in
+    auto)
+      if [[ "$OS" == "Linux" ]]; then
+        MODE="vps-headless"
+      else
+        MODE="local-cursor"
+      fi
+      ;;
+    local-cursor|vps-headless)
+      ;;
+    *)
+      warn "Invalid mode: $MODE"
+      usage
+      exit 1
+      ;;
+  esac
+
+  log "Resolved mode: $MODE"
+}
 
 install_homebrew() {
   if has_cmd brew; then
@@ -107,6 +211,11 @@ install_copilot_cli() {
 }
 
 install_cursor() {
+  if [[ "$INSTALL_CURSOR" == "no" ]]; then
+    log "Skipping Cursor install by flag"
+    return
+  fi
+
   if has_cmd cursor; then
     log "Cursor CLI already installed"
     return
@@ -119,7 +228,7 @@ install_cursor() {
       brew install --cask cursor
       ;;
     Linux)
-      warn "Cursor Linux install varies by distro. Install manually from cursor.com/downloads, then re-run."
+      warn "Cursor Linux install varies by distro. Install manually from cursor.com/downloads if needed."
       ;;
     *)
       warn "Unsupported OS for Cursor install: $OS"
@@ -265,6 +374,18 @@ start_9router_daemon() {
 }
 
 main() {
+  parse_args "$@"
+  resolve_mode
+
+  # Mode defaults for Cursor installation behavior.
+  if [[ "$INSTALL_CURSOR" == "auto" ]]; then
+    if [[ "$MODE" == "vps-headless" ]]; then
+      INSTALL_CURSOR="no"
+    else
+      INSTALL_CURSOR="yes"
+    fi
+  fi
+
   log "Starting bootstrap"
   install_node_if_missing
   install_claude_code
@@ -272,7 +393,9 @@ main() {
   install_copilot_cli
   install_cursor
   install_9router
-  init_cursor_state_db_headless
+  if [[ "$MODE" == "vps-headless" ]]; then
+    init_cursor_state_db_headless
+  fi
   init_9router_db
   start_9router_daemon
 
@@ -288,7 +411,11 @@ Next:
 3) Install auto-sync cron (keeps config healthy after tunnel rotation):
    "$ROOT_DIR/scripts/sync/install_sync_cron.sh" "$ROOT_DIR/scripts/sync/9router_claude_sync.py" "\$HOME/.9router/claude-sync.log"
 
-Note: Antigravity provider login is done via 9router web UI (Google OAuth) — not via CLI.
+Mode: $MODE
+
+Notes:
+- Antigravity provider login is done via 9router web UI (Google OAuth) — not via CLI.
+- Cursor provider on VPS is optional; use scripts/bootstrap-vps.sh to sync tokens from local Cursor login.
 
 EOF
 }
