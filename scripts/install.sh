@@ -156,6 +156,33 @@ conn.close()
 PY
     log "Created headless Cursor state DB: $db"
   done
+
+  # Optional: seed real Cursor auth tokens for VPS auto-import.
+  # Export these before install if you want Cursor provider to work headless:
+  #   CURSOR_ACCESS_TOKEN=... CURSOR_REFRESH_TOKEN=...
+  if [[ -n "${CURSOR_ACCESS_TOKEN:-}" && -n "${CURSOR_REFRESH_TOKEN:-}" ]]; then
+    for db in "$db1" "$db2"; do
+      python3 - <<PY
+import sqlite3
+db_path = r"""$db"""
+access = r"""${CURSOR_ACCESS_TOKEN}"""
+refresh = r"""${CURSOR_REFRESH_TOKEN}"""
+email = r"""${CURSOR_EMAIL:-}"""
+conn = sqlite3.connect(db_path)
+cur = conn.cursor()
+cur.execute("CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)")
+cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/accessToken", access))
+cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/refreshToken", refresh))
+if email:
+    cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/cachedEmail", email))
+conn.commit()
+conn.close()
+PY
+      log "Seeded Cursor auth tokens into: $db"
+    done
+  else
+    warn "Cursor auth tokens not provided (CURSOR_ACCESS_TOKEN/CURSOR_REFRESH_TOKEN). Cursor auto-import may show 'manual paste' prompt on VPS."
+  fi
 }
 
 init_9router_db() {
