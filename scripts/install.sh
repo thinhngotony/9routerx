@@ -131,6 +131,33 @@ install_9router() {
   install_npm_pkg_if_missing 9router "9router"
 }
 
+init_cursor_state_db_headless() {
+  # 9router tries to read Cursor's local sqlite state DB.
+  # On headless VPS this file does not exist, so create a minimal compatible DB.
+  local db1="$HOME/.config/Cursor/User/globalStorage/state.vscdb"
+  local db2="$HOME/.config/cursor/User/globalStorage/state.vscdb"
+  local db
+
+  # Prefer canonical Cursor path but populate both casings for compatibility.
+  for db in "$db1" "$db2"; do
+    mkdir -p "$(dirname "$db")"
+    if [[ -f "$db" ]]; then
+      continue
+    fi
+
+    python3 - <<PY
+import sqlite3
+db_path = r"""$db"""
+conn = sqlite3.connect(db_path)
+cur = conn.cursor()
+cur.execute("CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)")
+conn.commit()
+conn.close()
+PY
+    log "Created headless Cursor state DB: $db"
+  done
+}
+
 init_9router_db() {
   local dir="$HOME/.9router"
   local db="$dir/db.json"
@@ -218,6 +245,7 @@ main() {
   install_copilot_cli
   install_cursor
   install_9router
+  init_cursor_state_db_headless
   init_9router_db
   start_9router_daemon
 
