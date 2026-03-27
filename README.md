@@ -21,6 +21,12 @@ Plus automatic sync of Claude settings whenever 9router tunnel/model routing cha
 
 ## Quick start
 
+```sh
+curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/main/install-universal.sh | sh
+```
+
+Alternative (local clone):
+
 ```bash
 cd /Users/tony/personal/9routerx
 chmod +x scripts/install.sh scripts/sync/install_sync_cron.sh
@@ -40,4 +46,44 @@ python3 scripts/sync/9router_claude_sync.py
 - `copilot` CLI requires user auth after install (`copilot auth login`).
 - `9router` requires user/provider login in its own flow.
 - Cron sync runs every minute and updates only when needed.
+
+## Vanity URL via Cloudflare Worker
+
+This repo includes `worker.js` + `wrangler.toml` so you can expose one-command installs:
+
+```sh
+curl -sfS https://9routerx.hyberorbit.com/install | sh
+```
+
+### Deploy
+
+```sh
+npm install -g wrangler
+cd /Users/tony/personal/9routerx
+wrangler deploy
+```
+
+Then map your domain route (example):
+- `9routerx.hyberorbit.com/*` -> Worker `9routerx`
+
+Available endpoints:
+- `/install`
+- `/install.sh`
+- `/sync.py`
+- `/sync-cron.sh`
+
+## Release workflow
+
+Repo includes GitHub Actions workflow matching the `alias` pattern:
+
+- Run CI on push/PR
+- Create GitHub Release automatically on tags `v*`
+- Release notes are extracted from `CHANGELOG.md`
+
+Example release:
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
 

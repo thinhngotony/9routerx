@@ -1,0 +1,6 @@
+name = "9routerx"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+# Set CLOUDFLARE_ACCOUNT_ID env var or use:
+# wrangler deploy --account-id <id>
+

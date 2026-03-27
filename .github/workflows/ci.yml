@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint scripts
+        run: |
+          shellcheck -s sh install-universal.sh
+          shellcheck -s bash scripts/install.sh
+          shellcheck -s bash scripts/sync/install_sync_cron.sh
+
+  syntax-check:
+    name: Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        run: |
+          sh -n install-universal.sh
+          bash -n scripts/install.sh
+          bash -n scripts/sync/install_sync_cron.sh
+
+      - name: Check Python syntax
+        run: python3 -m py_compile scripts/sync/9router_claude_sync.py
+
+      - name: Check Worker syntax
+        run: node -e "import('./worker.js').then(()=>console.log('worker ok'))"
+
+  test-functional:
+    name: Functional Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate sync script flags
+        run: |
+          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--watch"
+          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--interval"
+          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--quiet"
+
+      - name: Validate cron installer idempotence format
+        run: |
+          grep -q '*/1 \* \* \* \*' scripts/sync/install_sync_cron.sh
+          grep -q 'cron entry already exists' scripts/sync/install_sync_cron.sh
+
+      - name: Validate installer includes required tools
+        run: |
+          grep -q 'install_claude_code' scripts/install.sh
+          grep -q 'install_antigravity' scripts/install.sh
+          grep -q 'install_copilot_cli' scripts/install.sh
+          grep -q 'install_cursor' scripts/install.sh
+          grep -q 'install_9router' scripts/install.sh
+
+  release:
+    name: Create Release
+    needs: [lint, syntax-check, test-functional]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          CHANGELOG=$(awk "/^## \[${VERSION#v}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md | head -80)
+
+          EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "CONTENT<<$EOF_MARKER" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          echo "$EOF_MARKER" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: 9routerx ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Release ${{ steps.version.outputs.VERSION }} 🚀
+
+            ${{ steps.changelog.outputs.CONTENT }}
+
+            ---
+
+            ### Installation
+
+            ```sh
+            curl -sfS https://9routerx.hyberorbit.com/install | sh
+            ```
+
+            ### Included automation
+            - Idempotent installs for Claude Code, Antigravity, Copilot CLI, Cursor, and 9router
+            - Tunnel + model auto-sync for Claude settings
+            - Cron-based self-healing sync
+            - Cloudflare Worker endpoints for stable install URLs
+
+            **Full Changelog**: https://github.com/thinhngotony/9routerx/compare/v1.0.0...${{ steps.version.outputs.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
