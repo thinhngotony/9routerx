@@ -17,10 +17,10 @@ export default {
         version = data.tag_name || "latest";
       }
     } catch {
-      // Fallback to main if release lookup fails.
+      // Fallback to master if release lookup fails.
     }
 
-    const ref = version !== "latest" ? version : "main";
+    const ref = version !== "latest" ? version : "master";
     const base = `https://raw.githubusercontent.com/thinhngotony/9routerx/${ref}`;
 
     const routes = {

@@ -3,14 +3,14 @@ set -eu
 
 INSTALL_HOME="${HOME}/.9routerx"
 
-# Resolve latest release tag; fallback to main for first-time setup.
+# Resolve latest release tag; fallback to master for first-time setup.
 VERSION=$(curl -sfS "https://api.github.com/repos/thinhngotony/9routerx/releases/latest" 2>/dev/null \
   | awk -F '"' '/tag_name/ {print $4; exit}' | sed 's/^v//')
 
 if printf '%s' "${VERSION:-}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+'; then
   BASE_URL="https://raw.githubusercontent.com/thinhngotony/9routerx/v${VERSION}"
 else
-  BASE_URL="https://raw.githubusercontent.com/thinhngotony/9routerx/main"
+  BASE_URL="https://raw.githubusercontent.com/thinhngotony/9routerx/master"
 fi
 
 mkdir -p "${INSTALL_HOME}/scripts/sync"

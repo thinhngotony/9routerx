@@ -22,7 +22,7 @@ Plus automatic sync of Claude settings whenever 9router tunnel/model routing cha
 ## Quick start
 
 ```sh
-curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/main/install-universal.sh | sh
+curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh
 ```
 
 Alternative (local clone):
