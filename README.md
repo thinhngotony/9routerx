@@ -33,6 +33,21 @@ chmod +x scripts/install.sh scripts/sync/install_sync_cron.sh
 ./scripts/install.sh
 ```
 
+### Fully automated VPS bootstrap (includes Cursor token transfer)
+
+Run this from your local machine (where Cursor is already logged in):
+
+```bash
+cd /Users/tony/personal/9routerx
+chmod +x scripts/bootstrap-vps.sh
+./scripts/bootstrap-vps.sh root@YOUR_VPS_IP 22
+```
+
+This command:
+- extracts `cursorAuth/*` tokens from your local Cursor DB
+- transfers them to VPS over SSH (base64-encoded env vars)
+- runs the remote installer with token seeding
+
 After `9router` install/login/setup is done by user, run:
 
 ```bash
