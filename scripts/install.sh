@@ -131,6 +131,74 @@ install_9router() {
   install_npm_pkg_if_missing 9router "9router"
 }
 
+init_9router_db() {
+  local dir="$HOME/.9router"
+  local db="$dir/db.json"
+
+  mkdir -p "$dir"
+
+  if [[ -f "$db" ]]; then
+    log "~/.9router/db.json already exists"
+    return
+  fi
+
+  log "Seeding ~/.9router/db.json (first-time init)"
+  cat > "$db" <<'DBJSON'
+{
+  "providerConnections": [],
+  "providerNodes": [],
+  "proxyPools": [],
+  "modelAliases": {},
+  "mitmAlias": {},
+  "combos": [],
+  "apiKeys": [],
+  "settings": {
+    "cloudEnabled": false,
+    "tunnelEnabled": true,
+    "tunnelUrl": "",
+    "stickyRoundRobinLimit": 3,
+    "providerStrategies": {},
+    "comboStrategy": "fallback",
+    "comboStrategies": {},
+    "requireLogin": false,
+    "observabilityEnabled": true,
+    "observabilityMaxRecords": 1000,
+    "observabilityBatchSize": 20,
+    "observabilityFlushIntervalMs": 5000,
+    "observabilityMaxJsonSize": 1024,
+    "outboundProxyEnabled": false,
+    "outboundProxyUrl": "",
+    "outboundNoProxy": ""
+  },
+  "pricing": {}
+}
+DBJSON
+  log "Created ~/.9router/db.json"
+}
+
+start_9router_daemon() {
+  # On Linux headless (VPS), start 9router in background with no-browser flag.
+  # On macOS, skip — user opens it manually or via tray.
+  if [[ "$OS" != "Linux" ]]; then
+    return
+  fi
+
+  if pgrep -f "9router" >/dev/null 2>&1; then
+    log "9router already running"
+    return
+  fi
+
+  log "Starting 9router daemon (no-browser, port 20128)"
+  nohup 9router --no-browser --port 20128 >> "$HOME/.9router/startup.log" 2>&1 &
+  sleep 3
+
+  if pgrep -f "9router" >/dev/null 2>&1; then
+    log "9router started — open http://$(hostname -I | awk '{print $1}'):20128 in your browser"
+  else
+    warn "9router may have failed to start — check ~/.9router/startup.log"
+  fi
+}
+
 main() {
   log "Starting bootstrap"
   install_node_if_missing
@@ -139,13 +207,16 @@ main() {
   install_copilot_cli
   install_cursor
   install_9router
+  init_9router_db
+  start_9router_daemon
 
   log "Bootstrap complete"
   cat <<EOF
 
 Next:
-1) Run 9router and complete provider logins (Claude, GitHub Copilot, Antigravity via Google OAuth):
-   9router
+1) Open 9router UI and complete provider logins (Claude, GitHub Copilot, Antigravity via Google OAuth):
+   - Linux VPS: http://YOUR_SERVER_IP:20128
+   - macOS:     run '9router' in terminal
 2) Sync Claude config to current tunnel/models:
    python3 "$ROOT_DIR/scripts/sync/9router_claude_sync.py"
 3) Install auto-sync cron (keeps config healthy after tunnel rotation):
