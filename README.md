@@ -74,6 +74,20 @@ curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install
 ./scripts/bootstrap-vps.sh --sync-only root@YOUR_VPS_IP 22
 ```
 
+### Health check (doctor)
+
+```bash
+cd /Users/tony/personal/9routerx
+chmod +x scripts/doctor.sh
+
+# Auto mode (Linux -> vps-headless, others -> local-cursor)
+./scripts/doctor.sh
+
+# Explicit mode
+./scripts/doctor.sh --mode local-cursor
+./scripts/doctor.sh --mode vps-headless
+```
+
 After `9router` install/login/setup is done by user, run:
 
 ```bash
