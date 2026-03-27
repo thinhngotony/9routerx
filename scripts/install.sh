@@ -73,17 +73,37 @@ install_claude_code() {
 }
 
 install_antigravity() {
-  install_npm_pkg_if_missing antigravity "@antigravityai/cli"
+  # antigravity-ide is the npm workspace CLI (skills/rules/workflows).
+  # The Antigravity AI provider (Google Cloud OAuth) is configured inside
+  # 9router's web UI — it does not require an npm package.
+  if has_cmd antigravity-ide || npm list -g antigravity-ide --depth=0 >/dev/null 2>&1; then
+    log "antigravity-ide already installed"
+    return
+  fi
+  log "Installing antigravity-ide"
+  npm install -g antigravity-ide
 }
 
 install_copilot_cli() {
-  if has_cmd copilot; then
-    log "copilot already installed"
+  # gh extension is the recommended Copilot CLI install path.
+  if has_cmd gh && gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
+    log "GitHub Copilot CLI already installed"
     return
   fi
 
-  log "Installing GitHub Copilot CLI extension"
-  npm install -g @githubnext/github-copilot-cli
+  if has_cmd gh; then
+    log "Installing GitHub Copilot CLI via gh extension"
+    gh extension install github/gh-copilot 2>/dev/null || true
+  elif has_cmd npm; then
+    if has_cmd copilot; then
+      log "copilot already installed"
+      return
+    fi
+    log "Installing GitHub Copilot CLI via npm"
+    npm install -g @githubnext/github-copilot-cli
+  else
+    warn "gh or npm required for Copilot CLI install"
+  fi
 }
 
 install_cursor() {
@@ -124,12 +144,14 @@ main() {
   cat <<EOF
 
 Next:
-1) Run 9router and complete provider logins:
+1) Run 9router and complete provider logins (Claude, GitHub Copilot, Antigravity via Google OAuth):
    9router
 2) Sync Claude config to current tunnel/models:
    python3 "$ROOT_DIR/scripts/sync/9router_claude_sync.py"
-3) Install auto-sync cron:
+3) Install auto-sync cron (keeps config healthy after tunnel rotation):
    "$ROOT_DIR/scripts/sync/install_sync_cron.sh" "$ROOT_DIR/scripts/sync/9router_claude_sync.py" "\$HOME/.9router/claude-sync.log"
+
+Note: Antigravity provider login is done via 9router web UI (Google OAuth) — not via CLI.
 
 EOF
 }
