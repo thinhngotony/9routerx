@@ -88,6 +88,44 @@ chmod +x scripts/doctor.sh
 ./scripts/doctor.sh --mode vps-headless
 ```
 
+### Virtual models (combos) for fallback / load balancing
+
+Create a virtual model name that routes to multiple upstream providers/models.
+
+List available model ids:
+
+```bash
+python3 scripts/combo.py models
+```
+
+Create a combo (fallback):
+
+```bash
+python3 scripts/combo.py create \
+  --name opus-4-6 \
+  --models cc/claude-opus-4-6,gh/claude-opus-4.5 \
+  --strategy fallback \
+  --validate
+```
+
+Create a combo (round-robin):
+
+```bash
+python3 scripts/combo.py create \
+  --name sonnet-pool \
+  --models cc/claude-sonnet-4-6,ag/claude-sonnet-4-6 \
+  --strategy round-robin \
+  --validate
+```
+
+List combos:
+
+```bash
+python3 scripts/combo.py list
+```
+
+Then in Claude Code, set your default model to the **combo name** (virtual model id), e.g. `opus-4-6`.
+
 After `9router` install/login/setup is done by user, run:
 
 ```bash
