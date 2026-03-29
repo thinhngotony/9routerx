@@ -6,6 +6,7 @@ import dataclasses
 import datetime as dt
 import json
 import os
+import signal
 import sys
 import uuid
 import urllib.error
@@ -259,6 +260,8 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    # Avoid noisy stack traces when output is piped to `head`.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     p = argparse.ArgumentParser(description="Manage 9router model combos (virtual models with fallback/round-robin).")
     p.add_argument("--api", default=NINE_ROUTER_API, help="9router base URL (default: http://127.0.0.1:20128)")
     p.add_argument("--api-key", default=None, help="9router API key (defaults to active key in ~/.9router/db.json)")

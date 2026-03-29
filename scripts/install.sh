@@ -25,6 +25,27 @@ Options:
 EOF
 }
 
+install_9routerx_cli() {
+  local bin_dir="$HOME/.local/bin"
+  local src="$ROOT_DIR/scripts/9routerx"
+  local dst="$bin_dir/9routerx"
+
+  mkdir -p "$bin_dir"
+
+  if [[ ! -f "$src" ]]; then
+    warn "9routerx CLI source not found at $src"
+    return
+  fi
+
+  cp "$src" "$dst"
+  chmod +x "$dst"
+
+  if ! echo "$PATH" | tr ':' '\n' | grep -qx "$bin_dir"; then
+    warn "Add $bin_dir to PATH to use '9routerx' globally"
+  fi
+  log "Installed 9routerx CLI: $dst"
+}
+
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -393,6 +414,7 @@ main() {
   install_copilot_cli
   install_cursor
   install_9router
+  install_9routerx_cli
   if [[ "$MODE" == "vps-headless" ]]; then
     init_cursor_state_db_headless
   fi
@@ -417,6 +439,7 @@ Mode: $MODE
 Notes:
 - Antigravity provider login is done via 9router web UI (Google OAuth) — not via CLI.
 - Cursor provider on VPS is optional; use scripts/bootstrap-vps.sh to sync tokens from local Cursor login.
+- Use ./scripts/9routerx combos create to create virtual models (fallback/round-robin).
 
 EOF
 }

@@ -14,6 +14,7 @@ else
 fi
 
 mkdir -p "${INSTALL_HOME}/scripts/sync"
+mkdir -p "${INSTALL_HOME}/scripts"
 
 download() {
   url="$1"
@@ -30,11 +31,14 @@ download() {
 echo "Installing 9routerx from ${BASE_URL}"
 
 download "${BASE_URL}/scripts/install.sh" "${INSTALL_HOME}/scripts/install.sh"
+download "${BASE_URL}/scripts/9routerx" "${INSTALL_HOME}/scripts/9routerx"
+download "${BASE_URL}/scripts/combo.py" "${INSTALL_HOME}/scripts/combo.py"
 download "${BASE_URL}/scripts/sync/9router_claude_sync.py" "${INSTALL_HOME}/scripts/sync/9router_claude_sync.py"
 download "${BASE_URL}/scripts/sync/install_sync_cron.sh" "${INSTALL_HOME}/scripts/sync/install_sync_cron.sh"
 
 chmod +x \
   "${INSTALL_HOME}/scripts/install.sh" \
+  "${INSTALL_HOME}/scripts/9routerx" \
   "${INSTALL_HOME}/scripts/sync/9router_claude_sync.py" \
   "${INSTALL_HOME}/scripts/sync/install_sync_cron.sh"
 

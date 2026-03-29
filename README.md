@@ -92,13 +92,16 @@ chmod +x scripts/doctor.sh
 
 Create a virtual model name that routes to multiple upstream providers/models.
 
-List available model ids:
+Interactive CLI (recommended):
 
 ```bash
-python3 scripts/combo.py models
+9routerx models
+9routerx combos create
+9routerx combos list
+9routerx combos delete <name>
 ```
 
-Create a combo (fallback):
+Non-interactive (advanced):
 
 ```bash
 python3 scripts/combo.py create \

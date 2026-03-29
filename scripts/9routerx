@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+API_BASE="${NINE_ROUTER_API:-http://127.0.0.1:20128}"
+
+usage() {
+  cat <<EOF
+9routerx CLI
+
+Usage:
+  9routerx models
+  9routerx combos list
+  9routerx combos create
+  9routerx combos delete <name>
+
+Env:
+  NINE_ROUTER_API   9router base URL (default: http://127.0.0.1:20128)
+EOF
+}
+
+need_python() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is required" >&2
+    exit 1
+  fi
+}
+
+models_raw() {
+  need_python
+  python3 "${ROOT_DIR}/scripts/combo.py" --api "${API_BASE}" models
+}
+
+models_grouped() {
+  need_python
+  models_raw | python3 - <<'PY'
+import signal
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+import sys
+from collections import defaultdict
+
+groups = defaultdict(list)
+for line in sys.stdin:
+    m = line.strip()
+    if not m:
+        continue
+    prefix = m.split("/", 1)[0] if "/" in m else "custom"
+    groups[prefix].append(m)
+
+order = sorted(groups.keys())
+for p in order:
+    print(f"[{p}]")
+    for m in groups[p]:
+        print(f"  {m}")
+    print()
+PY
+}
+
+combos_list() {
+  need_python
+  python3 "${ROOT_DIR}/scripts/combo.py" --api "${API_BASE}" list
+}
+
+prompt() {
+  local msg="$1"
+  local default="${2:-}"
+  if [[ -n "$default" ]]; then
+    printf "%s [%s]: " "$msg" "$default"
+  else
+    printf "%s: " "$msg"
+  fi
+  read -r v || true
+  if [[ -z "${v:-}" ]]; then
+    echo "$default"
+  else
+    echo "$v"
+  fi
+}
+
+combo_create_interactive() {
+  need_python
+  echo
+  echo "=== Create virtual model (combo) ==="
+  echo
+  echo "Tip: run '9routerx models' to browse all model ids."
+  echo
+
+  local name strategy
+  name="$(prompt "Virtual model name (example: opus-4-6)" "")"
+  if [[ -z "${name:-}" ]]; then
+    echo "Name required" >&2
+    exit 1
+  fi
+
+  strategy="$(prompt "Strategy (fallback|round-robin)" "fallback")"
+  case "$strategy" in
+    fallback|round-robin) ;;
+    *) echo "Invalid strategy: $strategy" >&2; exit 1 ;;
+  esac
+
+  echo
+  echo "Available models (numbered):"
+  echo
+
+  # Build list and capture selection.
+  local models_csv
+  models_csv="$(models_raw | python3 - <<'PY'
+import signal
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+import sys
+models = [l.strip() for l in sys.stdin if l.strip()]
+for i, m in enumerate(models, start=1):
+    print(f"{i:3d}) {m}")
+PY
+  )"
+  echo "$models_csv"
+
+  echo
+  local picked
+  picked="$(prompt "Select model numbers (comma-separated, 2+)" "")"
+  if [[ -z "${picked:-}" ]]; then
+    echo "No models selected" >&2
+    exit 1
+  fi
+
+  local models
+  models="$(models_raw | python3 - <<PY
+import signal
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+import sys
+
+picked = ${picked@Q}
+nums = []
+for part in picked.split(","):
+    part = part.strip()
+    if not part:
+        continue
+    nums.append(int(part))
+
+models = [l.strip() for l in sys.stdin if l.strip()]
+
+selected = []
+for n in nums:
+    if n < 1 or n > len(models):
+        print(f"Invalid selection: {n}", file=sys.stderr)
+        sys.exit(2)
+    selected.append(models[n-1])
+
+if len(selected) < 2:
+    print("Select at least 2 models", file=sys.stderr)
+    sys.exit(2)
+
+print(",".join(selected))
+PY
+  )"
+
+  echo
+  echo "Creating combo:"
+  echo "- name: $name"
+  echo "- strategy: $strategy"
+  echo "- models: $models"
+  echo
+
+  python3 "${ROOT_DIR}/scripts/combo.py" --api "${API_BASE}" create \
+    --name "$name" \
+    --models "$models" \
+    --strategy "$strategy" \
+    --validate
+}
+
+case "${1:-}" in
+  -h|--help|"")
+    usage
+    exit 0
+    ;;
+  models)
+    models_grouped
+    ;;
+  combos)
+    case "${2:-}" in
+      list|"")
+        combos_list
+        ;;
+      create)
+        combo_create_interactive
+        ;;
+      delete)
+        if [[ -z "${3:-}" ]]; then
+          echo "Usage: 9routerx combos delete <name>" >&2
+          exit 1
+        fi
+        need_python
+        python3 "${ROOT_DIR}/scripts/combo.py" --api "${API_BASE}" delete --name "$3"
+        ;;
+      *)
+        usage
+        exit 1
+        ;;
+    esac
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
+
