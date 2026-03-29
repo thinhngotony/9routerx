@@ -101,6 +101,7 @@ python3 scripts/sync/9router_claude_sync.py
 - `copilot` CLI requires user auth after install (`copilot auth login`).
 - `9router` requires user/provider login in its own flow.
 - Cron sync runs every minute and updates only when needed.
+- Prefer `http://127.0.0.1:20128` over `http://localhost:20128` on laptops (some systems resolve `localhost` to IPv6 `::1` and the UI may hang).
 
 ## Vanity URL via Cloudflare Worker
 

@@ -404,6 +404,7 @@ main() {
 
 Next:
 1) Open 9router UI and complete provider logins (Claude, GitHub Copilot, Antigravity via Google OAuth):
+   - Local:     http://127.0.0.1:20128  (avoid localhost -> ::1 issues)
    - Linux VPS: http://YOUR_SERVER_IP:20128
    - macOS:     run '9router' in terminal
 2) Sync Claude config to current tunnel/models:

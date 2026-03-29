@@ -79,6 +79,18 @@ check_9router_health() {
   fi
 }
 
+check_localhost_resolution_trap() {
+  # Many systems resolve localhost -> ::1 first. If 9router only listens on IPv4,
+  # http://localhost:20128 can hang while 127.0.0.1 works.
+  local code_localhost code_ipv4
+  code_ipv4="$(curl -sS -m 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:20128/login || true)"
+  code_localhost="$(curl -sS -m 2 -o /dev/null -w '%{http_code}' http://localhost:20128/login || true)"
+
+  if [[ "$code_ipv4" =~ ^(200|307|401|403)$ ]] && [[ ! "$code_localhost" =~ ^(200|307|401|403)$ ]]; then
+    warn "localhost may resolve to IPv6 (::1); prefer http://127.0.0.1:20128"
+  fi
+}
+
 check_common() {
   check_cmd node "Node.js"
   check_cmd npm "npm"
@@ -89,6 +101,7 @@ check_common() {
   check_cmd antigravity-ide "antigravity-ide CLI"
   check_file "$HOME/.9router/db.json" "9router database"
   check_9router_health
+  check_localhost_resolution_trap
 }
 
 check_local_cursor() {
