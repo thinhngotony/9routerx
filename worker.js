@@ -26,6 +26,7 @@ export default {
     const routes = {
       "/install": `${base}/install-universal.sh`,
       "/install.sh": `${base}/scripts/install.sh`,
+      "/bootstrap": `${base}/scripts/bootstrap-vps.sh`,
       "/sync.py": `${base}/scripts/sync/9router_claude_sync.py`,
       "/sync-cron.sh": `${base}/scripts/sync/install_sync_cron.sh`,
     };
@@ -40,6 +41,7 @@ Install:
 
 Raw scripts:
   /install.sh
+  /bootstrap
   /sync.py
   /sync-cron.sh
 

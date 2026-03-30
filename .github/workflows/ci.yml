@@ -21,10 +21,14 @@ jobs:
       - name: Install ShellCheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
-      - name: Lint scripts
+      - name: Lint POSIX scripts
+        run: shellcheck -s sh install-universal.sh
+
+      - name: Lint Bash scripts
         run: |
-          shellcheck -s sh install-universal.sh
           shellcheck -s bash scripts/install.sh
+          shellcheck -s bash scripts/doctor.sh
+          shellcheck -s bash scripts/bootstrap-vps.sh
           shellcheck -s bash scripts/sync/install_sync_cron.sh
 
   syntax-check:
@@ -34,14 +38,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check shell syntax
+      - name: Check POSIX sh syntax
+        run: sh -n install-universal.sh
+
+      - name: Check Bash syntax
         run: |
-          sh -n install-universal.sh
           bash -n scripts/install.sh
+          bash -n scripts/doctor.sh
+          bash -n scripts/bootstrap-vps.sh
           bash -n scripts/sync/install_sync_cron.sh
 
       - name: Check Python syntax
-        run: python3 -m py_compile scripts/sync/9router_claude_sync.py
+        run: |
+          python3 -m py_compile scripts/sync/9router_claude_sync.py
+          python3 -m py_compile scripts/combo.py
 
       - name: Check Worker syntax
         run: node -e "import('./worker.js').then(()=>console.log('worker ok'))"
@@ -59,7 +69,7 @@ jobs:
           python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--interval"
           python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--quiet"
 
-      - name: Validate cron installer idempotence format
+      - name: Validate cron installer idempotence
         run: |
           grep -q '*/1 \* \* \* \*' scripts/sync/install_sync_cron.sh
           grep -q 'cron entry already exists' scripts/sync/install_sync_cron.sh
@@ -71,6 +81,25 @@ jobs:
           grep -q 'install_copilot_cli' scripts/install.sh
           grep -q 'install_cursor' scripts/install.sh
           grep -q 'install_9router' scripts/install.sh
+
+      - name: Validate installer supports all modes
+        run: |
+          grep -q 'local-cursor' scripts/install.sh
+          grep -q 'vps-headless' scripts/install.sh
+          grep -q 'remote-vps' scripts/install.sh
+          grep -q 'remote_vps_install' scripts/install.sh
+
+      - name: Validate auto-update logic
+        run: |
+          grep -q 'npm_pkg_outdated' scripts/install.sh
+          grep -q 'install_or_update_npm_pkg' scripts/install.sh
+
+      - name: Validate worker routes
+        run: |
+          grep -q '/install' worker.js
+          grep -q '/bootstrap' worker.js
+          grep -q '/sync.py' worker.js
+          grep -q '/sync-cron.sh' worker.js
 
   release:
     name: Create Release
@@ -101,7 +130,7 @@ jobs:
         with:
           name: 9routerx ${{ steps.version.outputs.VERSION }}
           body: |
-            ## Release ${{ steps.version.outputs.VERSION }} 🚀
+            ## Release ${{ steps.version.outputs.VERSION }}
 
             ${{ steps.changelog.outputs.CONTENT }}
 
@@ -113,13 +142,22 @@ jobs:
             curl -sfS https://9routerx.hyberorbit.com/install | sh
             ```
 
-            ### Included automation
+            ### Remote VPS install (from local laptop)
+
+            ```sh
+            curl -sfS https://9routerx.hyberorbit.com/install | sh -s -- --remote-vps
+            ```
+
+            ### Features
+            - Beautiful CLI installer with color-coded output
+            - Remote VPS install via SSH with Cursor token sync
+            - Auto-update: always upgrades to latest versions of 9router, Claude Code, Copilot CLI, Antigravity
             - Idempotent installs for Claude Code, Antigravity, Copilot CLI, Cursor, and 9router
             - Tunnel + model auto-sync for Claude settings
             - Cron-based self-healing sync
+            - npm permission fix (EACCES/EEXIST prevention)
             - Cloudflare Worker endpoints for stable install URLs
 
             **Full Changelog**: https://github.com/thinhngotony/9routerx/compare/v1.0.0...${{ steps.version.outputs.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

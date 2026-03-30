@@ -6,104 +6,76 @@ OS="$(uname -s)"
 MODE=""
 INSTALL_CURSOR="auto"
 
-log() { printf "[9routerx] %s\n" "$*"; }
-warn() { printf "[9routerx][warn] %s\n" "$*" >&2; }
+# ── Colors ───────────────────────────────────────────────────────────────────
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+DIM='\033[2m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+ok()   { printf "      ${GREEN}✓${NC} %s\n" "$*"; }
+info() { printf "      ${DIM}→${NC} %s\n" "$*"; }
+err()  { printf "      ${RED}✗${NC} %s\n" "$*" >&2; }
+wrn()  { printf "      ${YELLOW}!${NC} %s\n" "$*" >&2; }
+hdr()  { printf "\n  ${BOLD}%s${NC}\n\n" "$*"; }
+sep()  { printf "${DIM}  ────────────────────────────────────────────────────────────────${NC}\n"; }
 
 has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
+# ── Usage ────────────────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 Usage: $0 [options]
 
 Options:
-  --mode <local-cursor|vps-headless|auto>   Install strategy.
-  --local-cursor                             Shortcut for --mode local-cursor.
-  --vps-headless                             Shortcut for --mode vps-headless.
-  --install-cursor                           Force Cursor install attempt.
-  --skip-cursor-install                      Skip Cursor install step.
-  -h, --help                                 Show this help message.
+  --mode <local-cursor|vps-headless|remote-vps|auto>
+  --local-cursor            Shortcut for --mode local-cursor
+  --vps-headless            Shortcut for --mode vps-headless
+  --remote-vps              Shortcut for --mode remote-vps
+  --install-cursor          Force Cursor install attempt
+  --skip-cursor-install     Skip Cursor install step
+  -h, --help                Show this help message
 EOF
 }
 
-install_9routerx_cli() {
-  local bin_dir="$HOME/.local/bin"
-  local src="$ROOT_DIR/scripts/9routerx"
-  local dst="$bin_dir/9routerx"
-
-  mkdir -p "$bin_dir"
-
-  if [[ ! -f "$src" ]]; then
-    warn "9routerx CLI source not found at $src"
-    return
-  fi
-
-  cp "$src" "$dst"
-  chmod +x "$dst"
-
-  if ! echo "$PATH" | tr ':' '\n' | grep -qx "$bin_dir"; then
-    warn "Add $bin_dir to PATH to use '9routerx' globally"
-  fi
-  log "Installed 9routerx CLI: $dst"
-}
-
+# ── Arg parsing ──────────────────────────────────────────────────────────────
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --mode)
-        MODE="${2:-}"
-        shift 2
-        ;;
-      --local-cursor)
-        MODE="local-cursor"
-        shift
-        ;;
-      --vps-headless)
-        MODE="vps-headless"
-        shift
-        ;;
-      --install-cursor)
-        INSTALL_CURSOR="yes"
-        shift
-        ;;
-      --skip-cursor-install)
-        INSTALL_CURSOR="no"
-        shift
-        ;;
-      -h|--help)
-        usage
-        exit 0
-        ;;
-      *)
-        warn "Unknown option: $1"
-        usage
-        exit 1
-        ;;
+      --mode)           MODE="${2:-}"; shift 2 ;;
+      --local-cursor)   MODE="local-cursor"; shift ;;
+      --vps-headless)   MODE="vps-headless"; shift ;;
+      --remote-vps)     MODE="remote-vps"; shift ;;
+      --install-cursor) INSTALL_CURSOR="yes"; shift ;;
+      --skip-cursor-install) INSTALL_CURSOR="no"; shift ;;
+      -h|--help)        usage; exit 0 ;;
+      *)                err "Unknown option: $1"; usage; exit 1 ;;
     esac
   done
 }
 
+# ── Mode selection ───────────────────────────────────────────────────────────
 choose_mode_if_needed() {
-  if [[ -n "$MODE" ]]; then
-    return
-  fi
+  [[ -n "$MODE" ]] && return
 
-  # For interactive terminals, let user choose explicitly.
   if [[ -t 0 ]]; then
-    echo
-    echo "Choose install mode:"
-    echo "  1) local-cursor  (this machine runs Cursor IDE login)"
-    echo "  2) vps-headless  (server gateway, optional token sync from local machine)"
-    echo "  3) auto          (Linux -> vps-headless, others -> local-cursor)"
-    printf "Select [1/2/3, default=3]: "
+    sep
+    hdr "Choose install mode"
+    printf "      ${CYAN}1)${NC} local-cursor   ${DIM}This machine runs Cursor IDE${NC}\n"
+    printf "      ${CYAN}2)${NC} vps-headless   ${DIM}Server-only, optional token sync${NC}\n"
+    printf "      ${CYAN}3)${NC} remote-vps     ${DIM}Install on a remote VPS via SSH${NC}\n"
+    printf "      ${CYAN}4)${NC} auto           ${DIM}Linux → vps-headless, others → local-cursor${NC}\n"
+    printf "\n"
+    printf "  Select ${DIM}[1/2/3/4, default=4]:${NC} "
     read -r choice
-    case "${choice:-3}" in
+    case "${choice:-4}" in
       1) MODE="local-cursor" ;;
       2) MODE="vps-headless" ;;
-      3|"") MODE="auto" ;;
-      *)
-        warn "Invalid choice: ${choice}"
-        exit 1
-        ;;
+      3) MODE="remote-vps" ;;
+      4|"") MODE="auto" ;;
+      *) err "Invalid choice: ${choice}"; exit 1 ;;
     esac
     return
   fi
@@ -122,158 +94,221 @@ resolve_mode() {
         MODE="local-cursor"
       fi
       ;;
-    local-cursor|vps-headless)
-      ;;
-    *)
-      warn "Invalid mode: $MODE"
-      usage
-      exit 1
-      ;;
+    local-cursor|vps-headless|remote-vps) ;;
+    *) err "Invalid mode: $MODE"; usage; exit 1 ;;
   esac
 
-  log "Resolved mode: $MODE"
+  printf "\n"
+  ok "Mode: ${BOLD}${MODE}${NC}"
 }
 
-install_homebrew() {
-  if has_cmd brew; then
-    return
+# ── npm helpers ──────────────────────────────────────────────────────────────
+npm_global_install() {
+  local pkg="$1"
+
+  # Fix npm cache permission issues before install
+  npm cache verify >/dev/null 2>&1 || true
+
+  local prefix
+  prefix="$(npm config get prefix 2>/dev/null || echo "")"
+
+  # Check if we can write to the global prefix
+  if [[ -n "$prefix" ]] && [[ -w "$prefix/lib" ]] 2>/dev/null; then
+    npm install -g "$pkg"
+  elif [[ "$(id -u)" -eq 0 ]]; then
+    npm install -g "$pkg"
+  elif [[ "$OS" == "Linux" ]]; then
+    sudo npm install -g "$pkg"
+  else
+    # macOS: try fixing prefix to user-writable location
+    local user_prefix="$HOME/.npm-global"
+    if [[ ! -d "$user_prefix" ]]; then
+      mkdir -p "$user_prefix"
+      npm config set prefix "$user_prefix"
+      wrn "Set npm prefix to $user_prefix — add to PATH: export PATH=\"$user_prefix/bin:\$PATH\""
+    fi
+    npm install -g "$pkg"
   fi
-  log "Homebrew not found, installing"
+}
+
+# ── Install helpers ──────────────────────────────────────────────────────────
+install_homebrew() {
+  has_cmd brew && return
+  info "Homebrew not found, installing"
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   if [[ -x /opt/homebrew/bin/brew ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   elif [[ -x /usr/local/bin/brew ]]; then
     eval "$(/usr/local/bin/brew shellenv)"
   fi
+  ok "Homebrew installed"
 }
 
 install_node_if_missing() {
   if has_cmd node && has_cmd npm; then
-    log "Node.js already installed"
+    ok "Node.js found"
     return
   fi
 
   case "$OS" in
     Darwin)
       install_homebrew
-      log "Installing Node.js via Homebrew"
+      info "Installing Node.js via Homebrew"
       brew install node
       ;;
     Linux)
       if has_cmd apt-get; then
-        log "Installing Node.js via apt"
-        sudo apt-get update
-        sudo apt-get install -y nodejs npm
+        info "Installing Node.js via apt"
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq nodejs npm
       elif has_cmd dnf; then
-        log "Installing Node.js via dnf"
-        sudo dnf install -y nodejs npm
+        info "Installing Node.js via dnf"
+        sudo dnf install -y -q nodejs npm
       elif has_cmd yum; then
-        log "Installing Node.js via yum"
-        sudo yum install -y nodejs npm
+        info "Installing Node.js via yum"
+        sudo yum install -y -q nodejs npm
       else
-        warn "No supported package manager found for Node.js install"
+        err "No supported package manager found for Node.js"
         exit 1
       fi
       ;;
-    *)
-      warn "Unsupported OS: $OS"
-      exit 1
-      ;;
+    *) err "Unsupported OS: $OS"; exit 1 ;;
   esac
+  ok "Node.js installed"
 }
 
-install_npm_pkg_if_missing() {
+npm_pkg_outdated() {
+  local pkg="$1"
+  local installed latest
+  installed="$(npm list -g "$pkg" --depth=0 --json 2>/dev/null \
+    | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('dependencies',{}).get('$pkg',{}).get('version',''))" 2>/dev/null || echo "")"
+  [[ -z "$installed" ]] && return 0  # not installed = treat as outdated
+  latest="$(npm view "$pkg" version 2>/dev/null || echo "")"
+  [[ -z "$latest" ]] && return 1     # can't check = assume up to date
+  [[ "$installed" != "$latest" ]]
+}
+
+install_or_update_npm_pkg() {
   local cmd="$1"
   local pkg="$2"
+
   if has_cmd "$cmd"; then
-    log "$cmd already installed"
+    if npm_pkg_outdated "$pkg"; then
+      local cur latest
+      cur="$(npm list -g "$pkg" --depth=0 2>/dev/null | grep "$pkg@" | sed 's/.*@//' || echo "?")"
+      latest="$(npm view "$pkg" version 2>/dev/null || echo "?")"
+      info "Updating $pkg ($cur → $latest)"
+      npm_global_install "$pkg"
+      ok "$pkg updated"
+    else
+      ok "$cmd up to date"
+    fi
     return
   fi
-  log "Installing $pkg"
-  npm install -g "$pkg"
+
+  info "Installing $pkg"
+  npm_global_install "$pkg"
+  ok "$pkg installed"
 }
 
 install_claude_code() {
-  install_npm_pkg_if_missing claude "@anthropic-ai/claude-code"
+  install_or_update_npm_pkg claude "@anthropic-ai/claude-code"
 }
 
 install_antigravity() {
-  # antigravity-ide is the npm workspace CLI (skills/rules/workflows).
-  # The Antigravity AI provider (Google Cloud OAuth) is configured inside
-  # 9router's web UI — it does not require an npm package.
   if has_cmd antigravity-ide || npm list -g antigravity-ide --depth=0 >/dev/null 2>&1; then
-    log "antigravity-ide already installed"
+    if npm_pkg_outdated "antigravity-ide"; then
+      info "Updating antigravity-ide"
+      npm_global_install antigravity-ide
+      ok "antigravity-ide updated"
+    else
+      ok "antigravity-ide up to date"
+    fi
     return
   fi
-  log "Installing antigravity-ide"
-  npm install -g antigravity-ide
+  info "Installing antigravity-ide"
+  npm_global_install antigravity-ide
+  ok "antigravity-ide installed"
 }
 
 install_copilot_cli() {
-  # gh extension is the recommended Copilot CLI install path.
-  if has_cmd gh && gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
-    log "GitHub Copilot CLI already installed"
-    return
-  fi
-
   if has_cmd gh; then
-    log "Installing GitHub Copilot CLI via gh extension"
-    gh extension install github/gh-copilot 2>/dev/null || true
-  elif has_cmd npm; then
-    if has_cmd copilot; then
-      log "copilot already installed"
-      return
+    if gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
+      info "Upgrading GitHub Copilot CLI"
+      gh extension upgrade github/gh-copilot 2>/dev/null || true
+      ok "GitHub Copilot CLI up to date"
+    else
+      info "Installing GitHub Copilot CLI via gh"
+      gh extension install github/gh-copilot 2>/dev/null || true
+      ok "GitHub Copilot CLI installed"
     fi
-    log "Installing GitHub Copilot CLI via npm"
-    npm install -g @githubnext/github-copilot-cli
+  elif has_cmd npm; then
+    install_or_update_npm_pkg copilot "@githubnext/github-copilot-cli"
   else
-    warn "gh or npm required for Copilot CLI install"
+    wrn "gh or npm required for Copilot CLI"
   fi
 }
 
 install_cursor() {
   if [[ "$INSTALL_CURSOR" == "no" ]]; then
-    log "Skipping Cursor install by flag"
+    info "Skipping Cursor install"
     return
   fi
 
   if has_cmd cursor; then
-    log "Cursor CLI already installed"
+    # Cursor self-updates; just confirm it's present
+    ok "Cursor found"
     return
   fi
 
   case "$OS" in
     Darwin)
       install_homebrew
-      log "Installing Cursor via Homebrew cask"
+      info "Installing Cursor via Homebrew"
       brew install --cask cursor
+      ok "Cursor installed"
       ;;
     Linux)
-      warn "Cursor Linux install varies by distro. Install manually from cursor.com/downloads if needed."
+      wrn "Cursor Linux install varies — visit cursor.com/downloads"
       ;;
-    *)
-      warn "Unsupported OS for Cursor install: $OS"
-      ;;
+    *) wrn "Unsupported OS for Cursor: $OS" ;;
   esac
 }
 
 install_9router() {
-  install_npm_pkg_if_missing 9router "9router"
+  install_or_update_npm_pkg 9router "9router"
 }
 
+install_9routerx_cli() {
+  local bin_dir="$HOME/.local/bin"
+  local src="$ROOT_DIR/scripts/9routerx"
+  local dst="$bin_dir/9routerx"
+
+  mkdir -p "$bin_dir"
+
+  if [[ ! -f "$src" ]]; then
+    wrn "9routerx CLI source not found at $src"
+    return
+  fi
+
+  cp "$src" "$dst"
+  chmod +x "$dst"
+
+  if ! echo "$PATH" | tr ':' '\n' | grep -qx "$bin_dir"; then
+    wrn "Add $bin_dir to PATH to use '9routerx' globally"
+  fi
+  ok "9routerx CLI installed"
+}
+
+# ── Headless Cursor DB ───────────────────────────────────────────────────────
 init_cursor_state_db_headless() {
-  # 9router tries to read Cursor's local sqlite state DB.
-  # On headless VPS this file does not exist, so create a minimal compatible DB.
   local db1="$HOME/.config/Cursor/User/globalStorage/state.vscdb"
   local db2="$HOME/.config/cursor/User/globalStorage/state.vscdb"
   local db
 
-  # Prefer canonical Cursor path but populate both casings for compatibility.
   for db in "$db1" "$db2"; do
     mkdir -p "$(dirname "$db")"
-    if [[ -f "$db" ]]; then
-      continue
-    fi
+    [[ -f "$db" ]] && continue
 
     python3 - <<PY
 import sqlite3
@@ -284,12 +319,9 @@ cur.execute("CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT R
 conn.commit()
 conn.close()
 PY
-    log "Created headless Cursor state DB: $db"
+    ok "Created headless Cursor DB: ${DIM}$(basename "$(dirname "$(dirname "$(dirname "$db")")")")/.../state.vscdb${NC}"
   done
 
-  # Optional: seed real Cursor auth tokens for VPS auto-import.
-  # Export these before install if you want Cursor provider to work headless:
-  #   CURSOR_ACCESS_TOKEN=... CURSOR_REFRESH_TOKEN=...
   if [[ -n "${CURSOR_ACCESS_TOKEN:-}" && -n "${CURSOR_REFRESH_TOKEN:-}" ]]; then
     for db in "$db1" "$db2"; do
       python3 - <<PY
@@ -308,13 +340,14 @@ if email:
 conn.commit()
 conn.close()
 PY
-      log "Seeded Cursor auth tokens into: $db"
     done
+    ok "Seeded Cursor auth tokens"
   else
-    warn "Cursor auth tokens not provided (CURSOR_ACCESS_TOKEN/CURSOR_REFRESH_TOKEN). Cursor auto-import may show 'manual paste' prompt on VPS."
+    wrn "Cursor tokens not provided (set CURSOR_ACCESS_TOKEN/CURSOR_REFRESH_TOKEN)"
   fi
 }
 
+# ── 9router DB ───────────────────────────────────────────────────────────────
 init_9router_db() {
   local dir="$HOME/.9router"
   local db="$dir/db.json"
@@ -322,11 +355,10 @@ init_9router_db() {
   mkdir -p "$dir"
 
   if [[ -f "$db" ]]; then
-    log "~/.9router/db.json already exists"
+    ok "~/.9router/db.json exists"
     return
   fi
 
-  log "Seeding ~/.9router/db.json (first-time init)"
   cat > "$db" <<'DBJSON'
 {
   "providerConnections": [],
@@ -357,48 +389,251 @@ init_9router_db() {
   "pricing": {}
 }
 DBJSON
-  log "Created ~/.9router/db.json"
+  ok "Created ~/.9router/db.json"
 }
 
+# ── Start daemon ─────────────────────────────────────────────────────────────
 start_9router_daemon() {
-  # On Linux headless (VPS), start 9router in background with no-browser flag.
-  # On macOS, skip — user opens it manually or via tray.
-  if [[ "$OS" != "Linux" ]]; then
-    return
-  fi
+  [[ "$OS" != "Linux" ]] && return
 
   local startup_log="$HOME/.9router/startup.log"
   local router_bin
   router_bin="$(command -v 9router || true)"
 
   if [[ -z "$router_bin" ]]; then
-    warn "9router binary not found in PATH after install"
+    wrn "9router binary not found in PATH"
     return
   fi
 
-  # Match the actual binary path to avoid false positives.
   if pgrep -f "$router_bin" >/dev/null 2>&1; then
-    log "9router already running ($router_bin)"
+    ok "9router already running"
     return
   fi
 
   touch "$startup_log"
-  log "Starting 9router daemon (no-browser, host 0.0.0.0, port 20128)"
+  info "Starting 9router daemon (0.0.0.0:20128)"
   nohup "$router_bin" --no-browser --host 0.0.0.0 --port 20128 >> "$startup_log" 2>&1 &
   sleep 3
 
   if pgrep -f "$router_bin" >/dev/null 2>&1; then
-    log "9router started — open http://YOUR_SERVER_IP:20128 in your browser"
+    ok "9router started"
   else
-    warn "9router failed to start — inspect $startup_log"
+    err "9router failed to start — see $startup_log"
   fi
 }
 
+# ── Remote VPS install ───────────────────────────────────────────────────────
+read_cursor_auth_from_db() {
+  python3 - <<'PY'
+import os
+import sqlite3
+import sys
+
+paths = [
+    os.path.expanduser("~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"),
+    os.path.expanduser("~/.config/Cursor/User/globalStorage/state.vscdb"),
+    os.path.expanduser("~/.config/cursor/User/globalStorage/state.vscdb"),
+]
+
+db_path = next((p for p in paths if os.path.exists(p)), None)
+if not db_path:
+    print("ERROR: Cursor database not found. Open Cursor IDE at least once.", file=sys.stderr)
+    sys.exit(2)
+
+conn = sqlite3.connect(db_path)
+cur = conn.cursor()
+cur.execute("CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)")
+
+def get_value(key: str) -> str:
+    row = cur.execute("SELECT value FROM ItemTable WHERE key = ?", (key,)).fetchone()
+    if not row:
+        return ""
+    v = row[0]
+    if isinstance(v, bytes):
+        return v.decode("utf-8", errors="ignore")
+    return str(v)
+
+access = get_value("cursorAuth/accessToken")
+refresh = get_value("cursorAuth/refreshToken")
+email = get_value("cursorAuth/cachedEmail")
+conn.close()
+
+if not access or not refresh:
+    print("ERROR: Cursor tokens missing. Re-login Cursor first.", file=sys.stderr)
+    sys.exit(3)
+
+print(access)
+print(refresh)
+print(email)
+PY
+}
+
+remote_vps_install() {
+  sep
+  hdr "Remote VPS Setup"
+
+  # ── Gather connection details ──────────────────────────────────────────────
+  printf "      VPS host ${DIM}(user@host):${NC} "
+  read -r TARGET_HOST
+  if [[ -z "${TARGET_HOST:-}" ]]; then
+    err "Host is required"
+    exit 1
+  fi
+
+  printf "      SSH port ${DIM}[22]:${NC} "
+  read -r SSH_PORT
+  SSH_PORT="${SSH_PORT:-22}"
+
+  # ── Test SSH connectivity ──────────────────────────────────────────────────
+  printf "\n"
+  info "Testing SSH connection to ${TARGET_HOST}:${SSH_PORT}"
+  if ! ssh -p "$SSH_PORT" -o ConnectTimeout=10 -o BatchMode=yes "$TARGET_HOST" "echo ok" >/dev/null 2>&1; then
+    err "Cannot connect to ${TARGET_HOST}:${SSH_PORT}"
+    printf "      ${DIM}Make sure SSH key auth is configured and the host is reachable.${NC}\n"
+    exit 1
+  fi
+  ok "SSH connection verified"
+
+  # ── Cursor token sync ─────────────────────────────────────────────────────
+  SYNC_TOKENS="n"
+  printf "\n"
+  printf "      Sync Cursor tokens from this machine? ${DIM}[Y/n]:${NC} "
+  read -r SYNC_TOKENS
+  SYNC_TOKENS="${SYNC_TOKENS:-Y}"
+
+  local ACCESS_B64="" REFRESH_B64="" EMAIL_B64=""
+
+  if [[ "$SYNC_TOKENS" =~ ^[Yy]$ ]]; then
+    info "Reading Cursor tokens from local database"
+    local TOKENS
+    mapfile -t TOKENS < <(read_cursor_auth_from_db)
+    local CURSOR_ACCESS_TOKEN="${TOKENS[0]:-}"
+    local CURSOR_REFRESH_TOKEN="${TOKENS[1]:-}"
+    local CURSOR_EMAIL="${TOKENS[2]:-}"
+
+    if [[ -z "$CURSOR_ACCESS_TOKEN" || -z "$CURSOR_REFRESH_TOKEN" ]]; then
+      err "Could not extract Cursor tokens"
+      exit 1
+    fi
+
+    ACCESS_B64="$(printf '%s' "$CURSOR_ACCESS_TOKEN" | base64 | tr -d '\n')"
+    REFRESH_B64="$(printf '%s' "$CURSOR_REFRESH_TOKEN" | base64 | tr -d '\n')"
+    EMAIL_B64="$(printf '%s' "$CURSOR_EMAIL" | base64 | tr -d '\n')"
+    ok "Cursor tokens extracted (access=${#CURSOR_ACCESS_TOKEN} chars)"
+  fi
+
+  # ── Remote install ─────────────────────────────────────────────────────────
+  sep
+  hdr "Installing on ${TARGET_HOST}"
+
+  ssh -p "$SSH_PORT" "$TARGET_HOST" \
+    "CURSOR_ACCESS_TOKEN_B64='$ACCESS_B64' CURSOR_REFRESH_TOKEN_B64='$REFRESH_B64' CURSOR_EMAIL_B64='$EMAIL_B64' SYNC_TOKENS='$SYNC_TOKENS' bash -s" <<'REMOTE'
+set -euo pipefail
+
+decode_b64() {
+  if base64 --help 2>/dev/null | grep -q -- '-d'; then
+    printf '%s' "$1" | base64 -d
+  else
+    printf '%s' "$1" | base64 -D
+  fi
+}
+
+# Run the headless installer
+curl -sfS https://9routerx.hyberorbit.com/install | sh -s -- --vps-headless
+
+# Sync tokens if requested
+if [[ "${SYNC_TOKENS:-n}" =~ ^[Yy]$ ]] && [[ -n "${CURSOR_ACCESS_TOKEN_B64:-}" ]]; then
+  export CURSOR_ACCESS_TOKEN="$(decode_b64 "${CURSOR_ACCESS_TOKEN_B64}")"
+  export CURSOR_REFRESH_TOKEN="$(decode_b64 "${CURSOR_REFRESH_TOKEN_B64}")"
+  export CURSOR_EMAIL="$(decode_b64 "${CURSOR_EMAIL_B64}")"
+
+  mkdir -p "$HOME/.config/Cursor/User/globalStorage" "$HOME/.config/cursor/User/globalStorage"
+  python3 - <<'PY'
+import os
+import sqlite3
+
+access = os.environ.get("CURSOR_ACCESS_TOKEN", "")
+refresh = os.environ.get("CURSOR_REFRESH_TOKEN", "")
+email = os.environ.get("CURSOR_EMAIL", "")
+
+paths = [
+    os.path.expanduser("~/.config/Cursor/User/globalStorage/state.vscdb"),
+    os.path.expanduser("~/.config/cursor/User/globalStorage/state.vscdb"),
+]
+
+for db_path in paths:
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)")
+    cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/accessToken", access))
+    cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/refreshToken", refresh))
+    if email:
+        cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/cachedEmail", email))
+    conn.commit()
+    conn.close()
+print("Cursor token sync complete")
+PY
+fi
+REMOTE
+
+  # ── Summary ────────────────────────────────────────────────────────────────
+  local VPS_IP="${TARGET_HOST#*@}"
+  sep
+  printf "\n"
+  printf "  ${GREEN}${BOLD}✓ Remote install complete${NC}\n"
+  printf "\n"
+  hdr "Next steps"
+  printf "      ${CYAN}1.${NC} Open 9router UI: ${BOLD}http://${VPS_IP}:20128${NC}\n"
+  printf "      ${CYAN}2.${NC} Complete provider logins (Claude, Copilot, Antigravity)\n"
+  printf "      ${CYAN}3.${NC} Run sync:  ${DIM}ssh ${TARGET_HOST} 'python3 ~/.9routerx/scripts/sync/9router_claude_sync.py'${NC}\n"
+  printf "\n"
+  sep
+  printf "\n"
+}
+
+# ── Summary for local installs ───────────────────────────────────────────────
+print_local_summary() {
+  sep
+  printf "\n"
+  printf "  ${GREEN}${BOLD}✓ Installation complete${NC}\n"
+  printf "\n"
+  hdr "Quick start"
+  printf "      ${CYAN}9routerx${NC}             ${DIM}CLI for combos & models${NC}\n"
+  printf "      ${CYAN}9routerx models${NC}      ${DIM}List available models${NC}\n"
+  printf "      ${CYAN}9routerx combos${NC}      ${DIM}Manage virtual models${NC}\n"
+  printf "\n"
+  hdr "9router UI"
+
+  if [[ "$MODE" == "vps-headless" ]]; then
+    printf "      ${BOLD}http://YOUR_SERVER_IP:20128${NC}\n"
+  else
+    printf "      ${BOLD}http://127.0.0.1:20128${NC}\n"
+    printf "      ${DIM}Run '9router' in terminal to start${NC}\n"
+  fi
+  printf "\n"
+  hdr "Sync"
+  printf "      ${DIM}python3 \"${ROOT_DIR}/scripts/sync/9router_claude_sync.py\"${NC}\n"
+  printf "      ${DIM}\"${ROOT_DIR}/scripts/sync/install_sync_cron.sh\"${NC}\n"
+  printf "\n"
+  printf "  ${DIM}Mode: ${MODE}${NC}\n"
+  printf "\n"
+  sep
+  printf "\n"
+}
+
+# ── Main ─────────────────────────────────────────────────────────────────────
 main() {
   parse_args "$@"
   resolve_mode
 
-  # Mode defaults for Cursor installation behavior.
+  # Remote VPS mode — handled entirely separately
+  if [[ "$MODE" == "remote-vps" ]]; then
+    remote_vps_install
+    return
+  fi
+
+  # Mode defaults for Cursor
   if [[ "$INSTALL_CURSOR" == "auto" ]]; then
     if [[ "$MODE" == "vps-headless" ]]; then
       INSTALL_CURSOR="no"
@@ -407,7 +642,9 @@ main() {
     fi
   fi
 
-  log "Starting bootstrap"
+  sep
+  hdr "Installing dependencies"
+
   install_node_if_missing
   install_claude_code
   install_antigravity
@@ -415,34 +652,19 @@ main() {
   install_cursor
   install_9router
   install_9routerx_cli
+
   if [[ "$MODE" == "vps-headless" ]]; then
+    sep
+    hdr "Headless setup"
     init_cursor_state_db_headless
   fi
+
+  sep
+  hdr "Database"
   init_9router_db
   start_9router_daemon
 
-  log "Bootstrap complete"
-  cat <<EOF
-
-Next:
-1) Open 9router UI and complete provider logins (Claude, GitHub Copilot, Antigravity via Google OAuth):
-   - Local:     http://127.0.0.1:20128  (avoid localhost -> ::1 issues)
-   - Linux VPS: http://YOUR_SERVER_IP:20128
-   - macOS:     run '9router' in terminal
-2) Sync Claude config to current tunnel/models:
-   python3 "$ROOT_DIR/scripts/sync/9router_claude_sync.py"
-3) Install auto-sync cron (keeps config healthy after tunnel rotation):
-   "$ROOT_DIR/scripts/sync/install_sync_cron.sh" "$ROOT_DIR/scripts/sync/9router_claude_sync.py" "\$HOME/.9router/claude-sync.log"
-
-Mode: $MODE
-
-Notes:
-- Antigravity provider login is done via 9router web UI (Google OAuth) — not via CLI.
-- Cursor provider on VPS is optional; use scripts/bootstrap-vps.sh to sync tokens from local Cursor login.
-- Use ./scripts/9routerx combos create to create virtual models (fallback/round-robin).
-
-EOF
+  print_local_summary
 }
 
 main "$@"
-

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+# NOTE: This script is kept for backward compatibility.
+# Prefer using:  install.sh --remote-vps   (or select option 3 in the menu)
+# which includes the same functionality with a better UX.
+# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 MODE="install"
