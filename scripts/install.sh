@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2059
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -99,7 +100,7 @@ resolve_mode() {
   esac
 
   printf "\n"
-  ok "Mode: ${BOLD}${MODE}${NC}"
+  printf "      ${GREEN}✓${NC} Mode: ${BOLD}%s${NC}\n" "$MODE"
 }
 
 # ── npm helpers ──────────────────────────────────────────────────────────────
@@ -355,7 +356,7 @@ init_9router_db() {
   mkdir -p "$dir"
 
   if [[ -f "$db" ]]; then
-    ok "~/.9router/db.json exists"
+    ok "\$HOME/.9router/db.json exists"
     return
   fi
 

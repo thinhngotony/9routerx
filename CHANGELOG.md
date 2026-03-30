@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mode selector now shows 4 options: local-cursor, vps-headless, remote-vps, auto.
 - `gh extension upgrade` used for Copilot CLI updates (instead of re-install).
 
+### Fixed
+
+- Fixed ANSI escape codes printed literally in mode display (`ok "Mode: \033[1mvps-headless\033[0m"`) by using printf directly with format specifiers.
+- Fixed ShellCheck SC2034: removed unused `YELLOW` and `CYAN` color variables from `install-universal.sh`.
+- Fixed ShellCheck SC2059: suppressed intentional color-variable-in-format-string pattern across installer scripts.
+- Fixed ShellCheck SC2088: tilde-in-quotes warning in `install.sh`.
+
 ### Deprecated
 
 - `scripts/bootstrap-vps.sh` as standalone entry point — use `install.sh --remote-vps` instead (script kept for backward compatibility).
