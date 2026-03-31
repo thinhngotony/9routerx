@@ -396,6 +396,45 @@ curl -sfS https://9routerx.hyberorbit.com/install | sh -s -- --vps-headless
 
 ---
 
+## Security
+
+**API Key Authentication:**
+
+When running 9router on a VPS accessible from the internet, **enable `requireLogin`** and use real API keys. The client-setup flow (`--client-setup`, option 3) automatically:
+
+1. SSHes to the VPS
+2. Calls `POST /api/keys` to generate a secure key
+3. Enables `requireLogin: true` in 9router settings
+4. Writes the key to local `~/.claude/settings.json`
+
+**Never use dummy tokens like `"9router"` on public VPS instances** — anyone can consume your provider quotas.
+
+Manually generate a key:
+
+```bash
+ssh root@YOUR_VPS_IP
+curl -X POST http://127.0.0.1:20128/api/keys \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"my-client","scopes":["read","write"]}'
+
+# Enable auth
+curl -X PATCH http://127.0.0.1:20128/api/settings \
+  -H 'Content-Type: application/json' \
+  -d '{"requireLogin":true}'
+```
+
+Then add the returned key to `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "9r_xxxxxxxxxxxxxx"
+  }
+}
+```
+
+---
+
 ## Notes
 
 - Installer is idempotent — safe to re-run at any time.

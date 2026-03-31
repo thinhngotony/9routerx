@@ -973,13 +973,10 @@ PY
     exit 1
   fi
 
-  # ── Ensure ANTHROPIC_AUTH_TOKEN exists so Claude Code sends a valid header ────
-  # 9router is a local proxy and does not enforce authentication, so any
-  # non-empty token value works.  We write "9router" as a recognisable sentinel
-  # only when no real token is already present.
+  # ── Ensure ANTHROPIC_AUTH_TOKEN exists ────────────────────────────────────────
   local claude_settings="$HOME/.claude/settings.json"
+  local existing_token=""
   if [[ -f "$claude_settings" ]]; then
-    local existing_token
     existing_token="$(python3 - <<PY 2>/dev/null || echo ""
 import json
 with open("${claude_settings}") as f:
@@ -987,21 +984,56 @@ with open("${claude_settings}") as f:
 print(d.get("env", {}).get("ANTHROPIC_AUTH_TOKEN", ""))
 PY
 )"
-    if [[ -z "${existing_token:-}" ]]; then
-      python3 - <<PY
+  fi
+
+  if [[ -z "${existing_token:-}" ]]; then
+    printf "\n"
+    info "ANTHROPIC_AUTH_TOKEN not set — generating a secure API key from ${vps_host}"
+
+    # Try to generate a real API key via SSH
+    local api_key=""
+    if api_key=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$vps_host" 'bash -s' <<'REMOTE' 2>/dev/null); then
+set -euo pipefail
+ROUTER_BASE="http://127.0.0.1:20128"
+KEY_RESP=$(curl -sf -X POST "${ROUTER_BASE}/api/keys" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"client-setup-'$(date +%s)'","scopes":["read","write"]}' 2>&1 || echo "")
+printf '%s' "$KEY_RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('key',''))" 2>/dev/null || true
+# Enable requireLogin
+curl -sf -X PATCH "${ROUTER_BASE}/api/settings" -H "Content-Type: application/json" -d '{"requireLogin":true}' >/dev/null 2>&1 || true
+REMOTE
+      api_key="${api_key// /}"  # strip whitespace
+    fi
+
+    if [[ -n "${api_key:-}" ]] && [[ "$api_key" != "ERROR"* ]]; then
+      ok "Generated secure API key from 9router: ${DIM}${api_key:0:8}...${NC}"
+      ok "Enabled requireLogin on ${vps_host} — only requests with valid keys accepted"
+    else
+      wrn "Could not generate API key via SSH — using temporary dummy token"
+      wrn "After setup, run: ssh ${vps_host} 'curl -X POST http://127.0.0.1:20128/api/keys' and update ~/.claude/settings.json"
+      api_key="9router-INSECURE-$(date +%s)"
+    fi
+
+    # Write the token
+    python3 - <<PY
 import json, os
 path = "${claude_settings}"
-with open(path) as f:
-    d = json.load(f)
-d.setdefault("env", {})["ANTHROPIC_AUTH_TOKEN"] = "9router"
+if os.path.exists(path):
+    with open(path) as f:
+        d = json.load(f)
+else:
+    d = {}
+d.setdefault("env", {})["ANTHROPIC_AUTH_TOKEN"] = "${api_key}"
+os.makedirs(os.path.dirname(path), exist_ok=True)
 tmp = path + ".tmp"
 with open(tmp, "w") as f:
     json.dump(d, f, indent=2)
     f.write("\n")
 os.replace(tmp, path)
 PY
-      ok "Set ANTHROPIC_AUTH_TOKEN = \"9router\" in ~/.claude/settings.json"
-    fi
+    ok "Set ANTHROPIC_AUTH_TOKEN in ~/.claude/settings.json"
+  else
+    ok "ANTHROPIC_AUTH_TOKEN already set: ${DIM}${existing_token:0:8}...${NC}"
   fi
 
   # ── Apply config ─────────────────────────────────────────────────────────────

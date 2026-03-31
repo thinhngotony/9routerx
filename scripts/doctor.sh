@@ -246,19 +246,30 @@ check_client_config() {
 
   # ── Claude Code ───────────────────────────────────────────────────────────────
   local claude_settings="$HOME/.claude/settings.json"
+  local claude_url="" claude_token=""
   if [[ -f "$claude_settings" ]]; then
-    local claude_url
-    claude_url="$(python3 - <<PY 2>/dev/null || echo ""
-import json, sys
+    read -r claude_url claude_token < <(python3 - <<PY 2>/dev/null || echo "" ""
+import json
 with open("${claude_settings}") as f:
     d = json.load(f)
-print(d.get("env", {}).get("ANTHROPIC_BASE_URL", ""))
+url = d.get("env", {}).get("ANTHROPIC_BASE_URL", "")
+token = d.get("env", {}).get("ANTHROPIC_AUTH_TOKEN", "")
+print(url, token)
 PY
-)"
+)
     if [[ -n "$claude_url" ]]; then
       pass "Claude Code  ANTHROPIC_BASE_URL=${DIM}${claude_url}${NC}"
     else
       warn "Claude Code  ANTHROPIC_BASE_URL not set in ~/.claude/settings.json"
+    fi
+
+    # Security check: warn about insecure dummy tokens on remote endpoints
+    if [[ -n "$claude_token" ]] && [[ "$claude_url" =~ ^http://([0-9]+\.){3}[0-9]+ ]]; then
+      if [[ "$claude_token" == "9router" ]] || [[ "$claude_token" == "9router-INSECURE"* ]]; then
+        fail "ANTHROPIC_AUTH_TOKEN is an insecure dummy token but URL is a public IP"
+        warn "Anyone on the internet can consume your provider quotas — generate a real API key:"
+        printf "    ${DIM}ssh YOUR_VPS 'curl -X POST http://127.0.0.1:20128/api/keys'${NC}\n"
+      fi
     fi
   else
     warn "Claude Code  settings.json not found"
