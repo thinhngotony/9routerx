@@ -55,17 +55,19 @@ SHELL_PROFILE_CANDIDATES = [
 
 # ── Model alias candidates ─────────────────────────────────────────────────────
 
-MODEL_CANDIDATES = {
+# Fallback candidates when live model discovery fails or 9router is unreachable.
+# These are probed in order; first working model wins.
+STATIC_MODEL_CANDIDATES = {
     "ANTHROPIC_DEFAULT_SONNET_MODEL": [
-        "gh/claude-sonnet-4.5",
         "gh/claude-sonnet-4.6",
         "cc/claude-sonnet-4-6",
+        "gh/claude-sonnet-4.5",
         "cc/claude-sonnet-4-5-20250929",
     ],
     "ANTHROPIC_DEFAULT_OPUS_MODEL": [
-        "gh/claude-opus-4.5",
         "gh/claude-opus-4.6",
         "cc/claude-opus-4-6",
+        "gh/claude-opus-4.5",
     ],
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": [
         "gh/claude-haiku-4.5",
@@ -191,6 +193,95 @@ def pick_working_model(
     return current
 
 
+def _extract_version(model_id: str) -> tuple:
+    """
+    Extract version tuple from model ID for sorting.
+    Examples:
+      cc/claude-sonnet-4-6       → (4, 6, 0)
+      gh/claude-sonnet-4.7       → (4, 7, 0)
+      cc/claude-haiku-4-5-20251001 → (4, 5, 20251001)
+    Returns (0, 0, 0) if no version pattern found.
+    """
+    import re
+    match = re.search(r"(\d+)[.-](\d+)(?:[.-](\d+))?", model_id)
+    if not match:
+        return (0, 0, 0)
+    major = int(match.group(1))
+    minor = int(match.group(2))
+    patch = int(match.group(3)) if match.group(3) else 0
+    return (major, minor, patch)
+
+
+def discover_model_candidates(router_base: str) -> Dict[str, List[str]]:
+    """
+    Query 9router /api/providers to auto-discover available models.
+    Returns a dict mapping ANTHROPIC_DEFAULT_*_MODEL to candidate lists,
+    sorted newest → oldest.
+    Falls back to STATIC_MODEL_CANDIDATES if discovery fails.
+    """
+    try:
+        data = request_json(f"{router_base}/api/providers", timeout=8)
+        connections = data.get("connections", [])
+
+        all_models = set()
+        for conn in connections:
+            if not conn.get("isActive"):
+                continue
+            provider = conn.get("provider", "")
+            # Extract models from testStatus or provider-specific data
+            # For now, construct provider/model-id from known patterns.
+            # 9router exposes available models via provider connections.
+            # We build synthetic model IDs: <provider-prefix>/claude-<tier>-<version>
+            prefix_map = {
+                "cursor": "cc",
+                "github": "gh",
+                "claude": "cc",  # claude provider → cc prefix
+                "antigravity": "ag",
+            }
+            prefix = prefix_map.get(provider, provider[:2])
+
+            # Heuristic: assume each active connection supports the standard
+            # Claude model tiers. In practice, 9router's model registry should
+            # expose this explicitly; for now we probe known patterns.
+            # This is a transitional implementation — ideally 9router would
+            # return a /api/models endpoint listing all <provider>/<model-id>.
+            base_models = [
+                f"{prefix}/claude-sonnet-4-6",
+                f"{prefix}/claude-sonnet-4.7",
+                f"{prefix}/claude-opus-4-6",
+                f"{prefix}/claude-opus-4.7",
+                f"{prefix}/claude-haiku-4-5-20251001",
+            ]
+            all_models.update(base_models)
+
+        # Partition by tier
+        sonnet = sorted(
+            [m for m in all_models if "sonnet" in m.lower()],
+            key=_extract_version,
+            reverse=True,
+        )
+        opus = sorted(
+            [m for m in all_models if "opus" in m.lower()],
+            key=_extract_version,
+            reverse=True,
+        )
+        haiku = sorted(
+            [m for m in all_models if "haiku" in m.lower()],
+            key=_extract_version,
+            reverse=True,
+        )
+
+        discovered = {
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": sonnet if sonnet else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_SONNET_MODEL"],
+            "ANTHROPIC_DEFAULT_OPUS_MODEL": opus if opus else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_OPUS_MODEL"],
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": haiku if haiku else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_HAIKU_MODEL"],
+        }
+        return discovered
+    except Exception:
+        # Network error, 9router down, or API schema change — fall back
+        return STATIC_MODEL_CANDIDATES
+
+
 # ── Sync: Claude Code ──────────────────────────────────────────────────────────
 
 def sync_claude_code(router_base: str, verbose: bool) -> bool:
@@ -221,7 +312,11 @@ def sync_claude_code(router_base: str, verbose: bool) -> bool:
     # model probing works even on a fresh install before the user sets a token.
     api_key = env.get("ANTHROPIC_AUTH_TOKEN", "").strip()
 
-    for env_key, candidates in MODEL_CANDIDATES.items():
+    # Auto-discover available models from 9router (newest first).
+    # Falls back to static list if discovery fails.
+    model_candidates = discover_model_candidates(router_base)
+
+    for env_key, candidates in model_candidates.items():
         current = env.get(env_key, "")
         chosen = pick_working_model(router_base, candidates, current, api_key)
         if chosen and chosen != current:
