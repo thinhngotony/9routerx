@@ -6,6 +6,18 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 API_BASE="${NINE_ROUTER_API:-http://127.0.0.1:20128}"
 
+# Locate the sync script (works from both source and universal install)
+_find_sync_script() {
+  local candidates=(
+    "${ROOT_DIR}/scripts/sync/9router_claude_sync.py"
+    "$HOME/.9routerx/scripts/sync/9router_claude_sync.py"
+  )
+  local f
+  for f in "${candidates[@]}"; do
+    [[ -f "$f" ]] && printf "%s" "$f" && return
+  done
+}
+
 usage() {
   cat <<EOF
 9routerx CLI
@@ -15,6 +27,8 @@ Usage:
   9routerx combos list
   9routerx combos create
   9routerx combos delete <name>
+  9routerx point-to <router-url> [--only claude|cursor|shell]
+  9routerx point-to --show
 
 Env:
   NINE_ROUTER_API   9router base URL (default: http://127.0.0.1:20128)
@@ -170,6 +184,90 @@ PY
     --validate
 }
 
+show_client_config() {
+  need_python
+  python3 - <<'PY'
+import json, os, platform, sys
+
+CLAUDE = os.path.expanduser("~/.claude/settings.json")
+CURSOR_PATHS = [
+    os.path.expanduser("~/Library/Application Support/Cursor/User/settings.json"),
+    os.path.expanduser("~/.config/Cursor/User/settings.json"),
+    os.path.expanduser("~/.config/cursor/User/settings.json"),
+]
+SHELL_PROFILES = [
+    os.path.expanduser(p) for p in ("~/.bashrc","~/.zshrc","~/.bash_profile","~/.profile")
+]
+MARKER = "# managed by 9routerx"
+
+print("\n  API routing — where local tools are pointing:\n")
+
+# Claude Code
+if os.path.exists(CLAUDE):
+    try:
+        d = json.load(open(CLAUDE))
+        url = d.get("env", {}).get("ANTHROPIC_BASE_URL", "(not set)")
+    except Exception:
+        url = "(unreadable)"
+else:
+    url = "(settings.json not found)"
+print(f"  Claude Code   ANTHROPIC_BASE_URL  =  {url}")
+
+# Cursor
+cursor_url = "(not set)"
+for p in CURSOR_PATHS:
+    if os.path.exists(p):
+        try:
+            d = json.load(open(p))
+            cursor_url = d.get("openai.baseUrl", "(not set)")
+        except Exception:
+            cursor_url = "(unreadable)"
+        break
+print(f"  Cursor        openai.baseUrl      =  {cursor_url}")
+
+# Shell profile
+shell_url = "(not set)"
+for p in SHELL_PROFILES:
+    if not os.path.exists(p):
+        continue
+    with open(p) as f:
+        for line in f:
+            if MARKER in line and "ANTHROPIC_BASE_URL" in line:
+                parts = line.strip().split("=", 1)
+                shell_url = parts[1].split()[0].strip('"') if len(parts) > 1 else line.strip()
+                break
+    if shell_url != "(not set)":
+        break
+print(f"  Shell env     ANTHROPIC_BASE_URL  =  {shell_url}")
+print()
+PY
+}
+
+point_to() {
+  need_python
+  local router_url="$1"
+  local only="${2:-all}"
+
+  local sync_script
+  sync_script="$(_find_sync_script)"
+  if [[ -z "${sync_script:-}" ]]; then
+    echo "9router_claude_sync.py not found. Run the installer first." >&2
+    exit 1
+  fi
+
+  local sync_flags="--router-url ${router_url}"
+  case "$only" in
+    claude) ;;
+    cursor) sync_flags="$sync_flags --sync-cursor" ;;
+    shell)  sync_flags="$sync_flags --sync-shell" ;;
+    all)    sync_flags="$sync_flags --sync-cursor --sync-shell" ;;
+    *) echo "Unknown target: $only (use claude|cursor|shell|all)" >&2; exit 1 ;;
+  esac
+
+  # shellcheck disable=SC2086
+  python3 "$sync_script" $sync_flags
+}
+
 case "${1:-}" in
   -h|--help|"")
     usage
@@ -177,6 +275,22 @@ case "${1:-}" in
     ;;
   models)
     models_grouped
+    ;;
+  point-to)
+    case "${2:-}" in
+      --show|"")
+        show_client_config
+        ;;
+      *)
+        router_url="$2"
+        shift 2
+        only="all"
+        if [[ "${1:-}" == "--only" ]]; then
+          only="${2:?--only requires a target: claude|cursor|shell|all}"
+        fi
+        point_to "$router_url" "$only"
+        ;;
+    esac
     ;;
   combos)
     case "${2:-}" in

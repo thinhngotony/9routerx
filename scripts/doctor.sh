@@ -241,6 +241,80 @@ check_local_cursor() {
   fi
 }
 
+check_client_config() {
+  hdr "API routing (local tools → 9router)"
+
+  # ── Claude Code ───────────────────────────────────────────────────────────────
+  local claude_settings="$HOME/.claude/settings.json"
+  if [[ -f "$claude_settings" ]]; then
+    local claude_url
+    claude_url="$(python3 - <<PY 2>/dev/null || echo ""
+import json, sys
+with open("${claude_settings}") as f:
+    d = json.load(f)
+print(d.get("env", {}).get("ANTHROPIC_BASE_URL", ""))
+PY
+)"
+    if [[ -n "$claude_url" ]]; then
+      pass "Claude Code  ANTHROPIC_BASE_URL=${DIM}${claude_url}${NC}"
+    else
+      warn "Claude Code  ANTHROPIC_BASE_URL not set in ~/.claude/settings.json"
+    fi
+  else
+    warn "Claude Code  settings.json not found"
+  fi
+
+  # ── Shell env ──────────────────────────────────────────────────────────────────
+  if [[ -n "${ANTHROPIC_BASE_URL:-}" ]]; then
+    pass "Shell env    ANTHROPIC_BASE_URL=${DIM}${ANTHROPIC_BASE_URL}${NC}"
+  else
+    warn "Shell env    ANTHROPIC_BASE_URL not set ${DIM}(reload shell after running --sync-shell)${NC}"
+  fi
+
+  # ── Cursor settings ───────────────────────────────────────────────────────────
+  local cursor_settings=""
+  local candidate
+  for candidate in \
+    "$HOME/Library/Application Support/Cursor/User/settings.json" \
+    "$HOME/.config/Cursor/User/settings.json" \
+    "$HOME/.config/cursor/User/settings.json"
+  do
+    [[ -f "$candidate" ]] && cursor_settings="$candidate" && break
+  done
+
+  if [[ -n "$cursor_settings" ]]; then
+    local cursor_url
+    cursor_url="$(python3 - <<PY 2>/dev/null || echo ""
+import json
+with open("${cursor_settings}") as f:
+    d = json.load(f)
+print(d.get("openai.baseUrl", ""))
+PY
+)"
+    if [[ -n "$cursor_url" ]]; then
+      pass "Cursor       openai.baseUrl=${DIM}${cursor_url}${NC}"
+    else
+      warn "Cursor       openai.baseUrl not set in settings.json"
+    fi
+  else
+    warn "Cursor       settings.json not found"
+  fi
+
+  # ── Connectivity check against wherever Claude Code is pointing ───────────────
+  local target_base="${ANTHROPIC_BASE_URL:-}"
+  # Strip trailing /v1 to get the 9router base for the health probe
+  target_base="${target_base%/v1}"
+  if [[ -n "$target_base" ]]; then
+    local http_code
+    http_code="$(curl -sS -m 5 -o /dev/null -w '%{http_code}' "${target_base}/api/providers" 2>/dev/null || echo "000")"
+    case "$http_code" in
+      200|401|403) pass "9router reachable at ${DIM}${target_base}${NC}" ;;
+      000)         fail "9router not reachable at ${DIM}${target_base}${NC} ${DIM}(connection refused)${NC}" ;;
+      *)           warn "9router unexpected status ${DIM}(${http_code})${NC} at ${target_base}" ;;
+    esac
+  fi
+}
+
 check_vps_headless() {
   hdr "Headless Cursor DB"
   local db1="$HOME/.config/Cursor/User/globalStorage/state.vscdb"
@@ -427,7 +501,10 @@ main() {
   check_common
 
   case "$MODE" in
-    local-cursor) check_local_cursor ;;
+    local-cursor)
+      check_local_cursor
+      check_client_config
+      ;;
     vps-headless) check_vps_headless ;;
     *) printf "Invalid mode: %s\n" "$MODE" >&2; exit 1 ;;
   esac
