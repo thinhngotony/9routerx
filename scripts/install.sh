@@ -504,11 +504,17 @@ StartLimitBurst=5
 [Service]
 Type=simple
 User=${run_user}
-ExecStart=${router_bin} --no-browser --host 0.0.0.0 --port 20128
+# --tray suppresses the interactive TUI picker; --skip-update prevents the
+# auto-updater from restarting the process outside systemd control.
+# StandardInput=null ensures no TTY is inherited (TUI would hijack the pty).
+ExecStart=${router_bin} --no-browser --tray --host 0.0.0.0 --port 20128 --skip-update
 Restart=on-failure
 RestartSec=5
+StandardInput=null
 StandardOutput=append:${startup_log}
 StandardError=append:${startup_log}
+Environment=NO_COLOR=1
+Environment=TERM=dumb
 
 [Install]
 WantedBy=multi-user.target
@@ -562,7 +568,9 @@ start_9router_daemon() {
     :  # service started by systemd enable --now
   else
     # Fallback: nohup (no auto-restart on crash or reboot)
-    nohup "$router_bin" --no-browser --host 0.0.0.0 --port 20128 >> "$startup_log" 2>&1 &
+    # Redirect stdin from /dev/null so the TUI picker cannot grab the terminal.
+    # --tray suppresses the interactive picker; --skip-update prevents out-of-band restarts.
+    NO_COLOR=1 TERM=dumb nohup "$router_bin" --no-browser --tray --host 0.0.0.0 --port 20128 --skip-update < /dev/null >> "$startup_log" 2>&1 &
     wrn "Running without systemd — 9router will NOT restart automatically on reboot or crash"
     wrn "To fix: install systemd or manually add a cron '@reboot' entry"
   fi

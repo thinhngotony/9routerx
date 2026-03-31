@@ -293,15 +293,23 @@ cat > /etc/systemd/system/9router.service <<EOF
 [Unit]
 Description=9router AI gateway
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
 User=root
-ExecStart=${ROUTER_BIN} --no-browser --host 0.0.0.0 --port 20128
+# --tray suppresses the interactive TUI picker that hijacks the terminal.
+# --skip-update prevents the auto-updater from restarting outside systemd.
+# StandardInput=null ensures no TTY is inherited.
+ExecStart=${ROUTER_BIN} --no-browser --tray --host 0.0.0.0 --port 20128 --skip-update
 Restart=on-failure
 RestartSec=5
+StandardInput=null
 StandardOutput=append:/root/.9router/startup.log
 StandardError=append:/root/.9router/startup.log
+Environment=NO_COLOR=1
+Environment=TERM=dumb
 
 [Install]
 WantedBy=multi-user.target

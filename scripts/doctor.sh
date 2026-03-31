@@ -415,11 +415,14 @@ StartLimitBurst=5
 [Service]
 Type=simple
 User=${run_user}
-ExecStart=${router_bin} --no-browser --host 0.0.0.0 --port 20128
+ExecStart=${router_bin} --no-browser --tray --host 0.0.0.0 --port 20128 --skip-update
 Restart=on-failure
 RestartSec=5
+StandardInput=null
 StandardOutput=append:${startup_log}
 StandardError=append:${startup_log}
+Environment=NO_COLOR=1
+Environment=TERM=dumb
 
 [Install]
 WantedBy=multi-user.target
@@ -452,7 +455,7 @@ UNIT
   fi
 
   if [[ "$NEED_START_ROUTER" -eq 1 ]]; then
-    nohup "$router_bin" --no-browser --host 0.0.0.0 --port 20128 >> "$startup_log" 2>&1 &
+    NO_COLOR=1 TERM=dumb nohup "$router_bin" --no-browser --tray --host 0.0.0.0 --port 20128 --skip-update < /dev/null >> "$startup_log" 2>&1 &
     printf "  ${GREEN}✓${NC} 9router started ${DIM}(nohup — add @reboot cron for persistence)${NC}\n"
   fi
 
