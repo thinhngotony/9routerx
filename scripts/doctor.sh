@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="auto"
+MODE=""
 OS="$(uname -s)"
 
 GREEN='\033[0;32m'
@@ -15,7 +15,7 @@ warn() { printf "${YELLOW}WARN${NC} %s\n" "$*"; }
 
 usage() {
   cat <<EOF
-Usage: $0 [--mode <local-cursor|vps-headless|auto>]
+Usage: $0 [--mode <local-cursor|vps-headless>]
 EOF
 }
 
@@ -37,15 +37,61 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$MODE" == "auto" ]]; then
-  if [[ "$OS" == "Linux" ]]; then
-    MODE="vps-headless"
+tty_available() {
+  [[ -e /dev/tty ]] && [[ -r /dev/tty ]] && [[ -w /dev/tty ]]
+}
+
+tty_read() {
+  local prompt="$1"
+  local default="${2:-}"
+  local input=""
+
+  if tty_available; then
+    if [[ -n "$default" ]]; then
+      printf "%s [%s]: " "$prompt" "$default" > /dev/tty
+    else
+      printf "%s: " "$prompt" > /dev/tty
+    fi
+    if ! IFS= read -r input < /dev/tty; then
+      input=""
+    fi
   else
-    MODE="local-cursor"
+    if [[ -n "$default" ]]; then
+      printf "%s [%s]: " "$prompt" "$default"
+    else
+      printf "%s: " "$prompt"
+    fi
+    if ! IFS= read -r input; then
+      input=""
+    fi
   fi
+
+  if [[ -z "${input:-}" ]]; then
+    printf "%s" "$default"
+  else
+    printf "%s" "$input"
+  fi
+}
+
+if [[ -z "$MODE" ]]; then
+  if ! tty_available; then
+    echo "Interactive mode selection requires a TTY. Re-run with --mode <local-cursor|vps-headless>." >&2
+    exit 1
+  fi
+
+  echo "9routerx doctor"
+  echo
+  echo "Choose mode for this machine (source of checks):"
+  echo "  1) local-cursor   (this machine runs Cursor IDE)"
+  echo "  2) vps-headless   (server/headless install)"
+  sel="$(tty_read "Select [1/2]" "")"
+  case "${sel:-}" in
+    1) MODE="local-cursor" ;;
+    2) MODE="vps-headless" ;;
+    *) echo "Invalid selection: ${sel}" >&2; exit 1 ;;
+  esac
 fi
 
-echo "9routerx doctor"
 echo "mode: $MODE"
 echo
 
@@ -142,7 +188,7 @@ check_vps_headless() {
     warn "No startup log yet ($startup_log)"
   fi
 
-  warn "Cursor provider on VPS is optional; use bootstrap-vps.sh --sync-only for token refresh."
+  warn "Cursor provider on VPS is optional; use install.sh --sync-to <user@host> for token refresh."
 }
 
 check_common

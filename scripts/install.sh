@@ -6,6 +6,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OS="$(uname -s)"
 MODE=""
 INSTALL_CURSOR="auto"
+SYNC_TO=""
+REMOTE_TARGET_HOST=""
+REMOTE_SSH_PORT=""
+SSH_CONTROL_PATH=""
+
+# Isolate npm cache to avoid permission issues from previous installs
+# (e.g. root-owned directories under ~/.npm/_cacache).
+NINE_ROUTERX_NPM_CACHE="${NINE_ROUTERX_NPM_CACHE:-$HOME/.cache/9routerx-npm-cache}"
+export NPM_CONFIG_CACHE="$NINE_ROUTERX_NPM_CACHE"
+mkdir -p "$NPM_CONFIG_CACHE" 2>/dev/null || true
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -25,18 +35,55 @@ sep()  { printf "${DIM}  ──────────────────�
 
 has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
+# ── TTY helpers ────────────────────────────────────────────────────────────────
+tty_available() {
+  [[ -e /dev/tty ]] && [[ -r /dev/tty ]] && [[ -w /dev/tty ]]
+}
+
+tty_read() {
+  # Usage: tty_read "prompt" "default"
+  local prompt="$1"
+  local default="${2:-}"
+  local input=""
+
+  if tty_available; then
+    if [[ -n "$default" ]]; then
+      printf "%s%s [%s]:%s " "" "$prompt" "$default" "" > /dev/tty
+    else
+      printf "%s:%s " "$prompt" "" > /dev/tty
+    fi
+    if ! IFS= read -r input < /dev/tty; then
+      input=""
+    fi
+  else
+    if [[ -n "$default" ]]; then
+      printf "%s%s [%s]:%s " "" "$prompt" "$default" "" 
+    else
+      printf "%s:%s " "$prompt" "" 
+    fi
+    if ! IFS= read -r input; then
+      input=""
+    fi
+  fi
+
+  if [[ -z "${input:-}" ]]; then
+    printf "%s" "$default"
+  else
+    printf "%s" "$input"
+  fi
+}
+
 # ── Usage ────────────────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 Usage: $0 [options]
 
 Options:
-  --mode <local-cursor|vps-headless|remote-vps|auto>
-  --local-cursor            Shortcut for --mode local-cursor
-  --vps-headless            Shortcut for --mode vps-headless
-  --remote-vps              Shortcut for --mode remote-vps
-  --install-cursor          Force Cursor install attempt
-  --skip-cursor-install     Skip Cursor install step
+  --mode <local-cursor|vps-headless>
+  --local-cursor              Shortcut for --mode local-cursor
+  --vps-headless              Shortcut for --mode vps-headless
+  --sync-to <user@host>      Sync Cursor tokens from this machine to remote VPS
+  --ssh-port <port>          SSH port for --sync-to (default: 22)
   -h, --help                Show this help message
 EOF
 }
@@ -48,6 +95,9 @@ parse_args() {
       --mode)           MODE="${2:-}"; shift 2 ;;
       --local-cursor)   MODE="local-cursor"; shift ;;
       --vps-headless)   MODE="vps-headless"; shift ;;
+      --sync-to)        SYNC_TO="${2:-}"; shift 2 ;;
+      --ssh-port)       REMOTE_SSH_PORT="${2:-}"; shift 2 ;;
+      # Back-compat / hidden options:
       --remote-vps)     MODE="remote-vps"; shift ;;
       --install-cursor) INSTALL_CURSOR="yes"; shift ;;
       --skip-cursor-install) INSTALL_CURSOR="no"; shift ;;
@@ -61,40 +111,49 @@ parse_args() {
 choose_mode_if_needed() {
   [[ -n "$MODE" ]] && return
 
-  if [[ -t 0 ]]; then
-    sep
-    hdr "Choose install mode"
-    printf "      ${CYAN}1)${NC} local-cursor   ${DIM}This machine runs Cursor IDE${NC}\n"
-    printf "      ${CYAN}2)${NC} vps-headless   ${DIM}Server-only, optional token sync${NC}\n"
-    printf "      ${CYAN}3)${NC} remote-vps     ${DIM}Install on a remote VPS via SSH${NC}\n"
-    printf "      ${CYAN}4)${NC} auto           ${DIM}Linux → vps-headless, others → local-cursor${NC}\n"
-    printf "\n"
-    printf "  Select ${DIM}[1/2/3/4, default=4]:${NC} "
-    read -r choice
-    case "${choice:-4}" in
-      1) MODE="local-cursor" ;;
-      2) MODE="vps-headless" ;;
-      3) MODE="remote-vps" ;;
-      4|"") MODE="auto" ;;
-      *) err "Invalid choice: ${choice}"; exit 1 ;;
-    esac
-    return
+  if ! tty_available; then
+    err "Interactive mode selection requires a TTY. Re-run with --mode <local-cursor|vps-headless> (advanced)."
+    exit 1
   fi
 
-  MODE="auto"
-}
+  sep
+  hdr "What do you want to do?"
+  printf "      ${CYAN}1)${NC} Install 9routerx on ${BOLD}this machine${NC} ${DIM}(laptop or server)${NC}\n"
+  printf "      ${CYAN}2)${NC} Sync Cursor tokens from ${BOLD}this machine${NC} to a ${BOLD}remote VPS${NC} ${DIM}(auto-install if needed)${NC}\n"
+  printf "\n"
 
-resolve_mode() {
-  choose_mode_if_needed
-
-  case "$MODE" in
-    auto)
+  local choice
+  choice="$(tty_read "  Select [1/2]")"
+  case "${choice:-}" in
+    1)
+      # Install on this machine. Internally choose mode by OS so we get the
+      # right DB behavior, but the UX is a single \"install here\" option.
       if [[ "$OS" == "Linux" ]]; then
         MODE="vps-headless"
       else
         MODE="local-cursor"
       fi
       ;;
+    2)
+      MODE="remote-vps"
+      ;;
+    *)
+      err "Invalid choice: ${choice}"
+      exit 1
+      ;;
+  esac
+}
+
+resolve_mode() {
+  choose_mode_if_needed
+
+  if [[ "$MODE" == "auto" ]]; then
+    # Preserve back-compat flag, but never silently guess.
+    MODE=""
+    choose_mode_if_needed
+  fi
+
+  case "$MODE" in
     local-cursor|vps-headless|remote-vps) ;;
     *) err "Invalid mode: $MODE"; usage; exit 1 ;;
   esac
@@ -112,23 +171,27 @@ npm_global_install() {
 
   local prefix
   prefix="$(npm config get prefix 2>/dev/null || echo "")"
+  local node_modules_dir=""
+  if [[ -n "$prefix" ]]; then
+    node_modules_dir="${prefix%/}/lib/node_modules"
+  fi
 
   # Check if we can write to the global prefix
-  if [[ -n "$prefix" ]] && [[ -w "$prefix/lib" ]] 2>/dev/null; then
+  if [[ -n "$prefix" ]] && [[ -n "$node_modules_dir" ]] && [[ -w "$node_modules_dir" ]] 2>/dev/null; then
     npm install -g "$pkg"
   elif [[ "$(id -u)" -eq 0 ]]; then
     npm install -g "$pkg"
   elif [[ "$OS" == "Linux" ]]; then
     sudo npm install -g "$pkg"
   else
-    # macOS: try fixing prefix to user-writable location
+    # macOS: force npm prefix to a user-writable location.
+    # This avoids EACCES when npm is configured to write to /usr/local.
     local user_prefix="$HOME/.npm-global"
-    if [[ ! -d "$user_prefix" ]]; then
-      mkdir -p "$user_prefix"
-      npm config set prefix "$user_prefix"
-      wrn "Set npm prefix to $user_prefix — add to PATH: export PATH=\"$user_prefix/bin:\$PATH\""
-    fi
-    npm install -g "$pkg"
+    mkdir -p "$user_prefix"
+    # Force npm prefix for this command without mutating config files.
+    # (Some systems lock down npm config locations.)
+    export PATH="$user_prefix/bin:$PATH"
+    NPM_CONFIG_PREFIX="$user_prefix" npm install -g "$pkg"
   fi
 }
 
@@ -288,7 +351,7 @@ install_9routerx_cli() {
   mkdir -p "$bin_dir"
 
   if [[ ! -f "$src" ]]; then
-    wrn "9routerx CLI source not found at $src"
+    # Skip silently when running from a standalone copy (e.g. remote VPS)
     return
   fi
 
@@ -343,8 +406,6 @@ conn.close()
 PY
     done
     ok "Seeded Cursor auth tokens"
-  else
-    wrn "Cursor tokens not provided (set CURSOR_ACCESS_TOKEN/CURSOR_REFRESH_TOKEN)"
   fi
 }
 
@@ -445,18 +506,17 @@ conn = sqlite3.connect(db_path)
 cur = conn.cursor()
 cur.execute("CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB)")
 
-def get_value(key: str) -> str:
+def get_value(key):
     row = cur.execute("SELECT value FROM ItemTable WHERE key = ?", (key,)).fetchone()
     if not row:
         return ""
     v = row[0]
-    if isinstance(v, bytes):
-        return v.decode("utf-8", errors="ignore")
-    return str(v)
+    return v.decode("utf-8", errors="ignore") if isinstance(v, bytes) else str(v)
 
 access = get_value("cursorAuth/accessToken")
 refresh = get_value("cursorAuth/refreshToken")
 email = get_value("cursorAuth/cachedEmail")
+machine_id = get_value("storage.serviceMachineId") or get_value("storage.machineId") or get_value("telemetry.machineId")
 conn.close()
 
 if not access or not refresh:
@@ -466,6 +526,7 @@ if not access or not refresh:
 print(access)
 print(refresh)
 print(email)
+print(machine_id)
 PY
 }
 
@@ -474,61 +535,79 @@ remote_vps_install() {
   hdr "Remote VPS Setup"
 
   # ── Gather connection details ──────────────────────────────────────────────
-  printf "      VPS host ${DIM}(user@host):${NC} "
-  read -r TARGET_HOST
+  if ! tty_available; then
+    err "Remote VPS setup requires a TTY for interactive prompts."
+    exit 1
+  fi
+
+  TARGET_HOST="${REMOTE_TARGET_HOST:-$(tty_read "      VPS host (user@host or ip)" "")}"
   if [[ -z "${TARGET_HOST:-}" ]]; then
     err "Host is required"
     exit 1
   fi
 
-  printf "      SSH port ${DIM}[22]:${NC} "
-  read -r SSH_PORT
-  SSH_PORT="${SSH_PORT:-22}"
+  SSH_PORT="${REMOTE_SSH_PORT:-$(tty_read "      SSH port" "22")}"
 
-  # ── Test SSH connectivity ──────────────────────────────────────────────────
+  # ── SSH ControlMaster (single password prompt for all operations) ──────────
+  # Use /tmp with short name to stay under macOS 104-char Unix socket limit.
+  # SSH_CONTROL_PATH is declared at script-level so the EXIT trap can access it.
+  SSH_CONTROL_PATH="/tmp/.9rx-ssh-$$"
+  local SSH_OPTS=(-o "ControlMaster=auto" -o "ControlPath=${SSH_CONTROL_PATH}" -o "ControlPersist=120")
+
+  trap 'ssh -o "ControlPath=${SSH_CONTROL_PATH}" -O exit "${TARGET_HOST:-}" 2>/dev/null || true; rm -f "${SSH_CONTROL_PATH:-}"' EXIT
+
+  # ── Test SSH connectivity (opens the master connection — single password prompt)
   printf "\n"
-  info "Testing SSH connection to ${TARGET_HOST}:${SSH_PORT}"
-  if ! ssh -p "$SSH_PORT" -o ConnectTimeout=10 -o BatchMode=yes "$TARGET_HOST" "echo ok" >/dev/null 2>&1; then
+  info "Connecting to ${TARGET_HOST}:${SSH_PORT} (you may be prompted for password)"
+  if ! ssh "${SSH_OPTS[@]}" -p "$SSH_PORT" -o ConnectTimeout=10 "$TARGET_HOST" "echo ok" >/dev/null; then
     err "Cannot connect to ${TARGET_HOST}:${SSH_PORT}"
-    printf "      ${DIM}Make sure SSH key auth is configured and the host is reachable.${NC}\n"
+    printf "      ${DIM}Check IP/host, SSH port, and credentials (password or key).${NC}\n"
     exit 1
   fi
   ok "SSH connection verified"
 
   # ── Cursor token sync ─────────────────────────────────────────────────────
-  SYNC_TOKENS="n"
   printf "\n"
-  printf "      Sync Cursor tokens from this machine? ${DIM}[Y/n]:${NC} "
-  read -r SYNC_TOKENS
-  SYNC_TOKENS="${SYNC_TOKENS:-Y}"
+
+  local confirm
+  confirm="$(tty_read "      Overwrite Cursor tokens on ${TARGET_HOST}? (y/N)" "N")"
+  if ! [[ "$confirm" =~ ^[Yy]$ ]]; then
+    err "Aborted token sync."
+    exit 0
+  fi
 
   local ACCESS_B64="" REFRESH_B64="" EMAIL_B64=""
 
-  if [[ "$SYNC_TOKENS" =~ ^[Yy]$ ]]; then
-    info "Reading Cursor tokens from local database"
-    local TOKENS
-    mapfile -t TOKENS < <(read_cursor_auth_from_db)
-    local CURSOR_ACCESS_TOKEN="${TOKENS[0]:-}"
-    local CURSOR_REFRESH_TOKEN="${TOKENS[1]:-}"
-    local CURSOR_EMAIL="${TOKENS[2]:-}"
+  info "Reading Cursor tokens from local database"
+  local CURSOR_ACCESS_TOKEN="" CURSOR_REFRESH_TOKEN="" CURSOR_EMAIL="" CURSOR_MACHINE_ID=""
+  {
+    IFS= read -r CURSOR_ACCESS_TOKEN
+    IFS= read -r CURSOR_REFRESH_TOKEN
+    IFS= read -r CURSOR_EMAIL
+    IFS= read -r CURSOR_MACHINE_ID
+  } < <(read_cursor_auth_from_db)
 
-    if [[ -z "$CURSOR_ACCESS_TOKEN" || -z "$CURSOR_REFRESH_TOKEN" ]]; then
-      err "Could not extract Cursor tokens"
-      exit 1
-    fi
-
-    ACCESS_B64="$(printf '%s' "$CURSOR_ACCESS_TOKEN" | base64 | tr -d '\n')"
-    REFRESH_B64="$(printf '%s' "$CURSOR_REFRESH_TOKEN" | base64 | tr -d '\n')"
-    EMAIL_B64="$(printf '%s' "$CURSOR_EMAIL" | base64 | tr -d '\n')"
-    ok "Cursor tokens extracted (access=${#CURSOR_ACCESS_TOKEN} chars)"
+  if [[ -z "$CURSOR_ACCESS_TOKEN" || -z "$CURSOR_REFRESH_TOKEN" ]]; then
+    err "Could not extract Cursor tokens"
+    exit 1
   fi
+
+  ACCESS_B64="$(printf '%s' "$CURSOR_ACCESS_TOKEN" | base64 | tr -d '\n')"
+  REFRESH_B64="$(printf '%s' "$CURSOR_REFRESH_TOKEN" | base64 | tr -d '\n')"
+  EMAIL_B64="$(printf '%s' "$CURSOR_EMAIL" | base64 | tr -d '\n')"
+  MACHINE_ID_B64="$(printf '%s' "$CURSOR_MACHINE_ID" | base64 | tr -d '\n')"
+  ok "Cursor tokens extracted (access=${#CURSOR_ACCESS_TOKEN} chars, machineId=${#CURSOR_MACHINE_ID} chars)"
 
   # ── Remote install ─────────────────────────────────────────────────────────
   sep
   hdr "Installing on ${TARGET_HOST}"
 
-  ssh -p "$SSH_PORT" "$TARGET_HOST" \
-    "CURSOR_ACCESS_TOKEN_B64='$ACCESS_B64' CURSOR_REFRESH_TOKEN_B64='$REFRESH_B64' CURSOR_EMAIL_B64='$EMAIL_B64' SYNC_TOKENS='$SYNC_TOKENS' bash -s" <<'REMOTE'
+  # Upload install script directly (avoids DNS dependency on the remote VPS)
+  info "Uploading installer to ${TARGET_HOST}"
+  scp "${SSH_OPTS[@]}" -P "$SSH_PORT" "${ROOT_DIR}/scripts/install.sh" "${TARGET_HOST}:/tmp/9routerx-install.sh"
+
+  ssh "${SSH_OPTS[@]}" -p "$SSH_PORT" "$TARGET_HOST" \
+    "CURSOR_ACCESS_TOKEN_B64='$ACCESS_B64' CURSOR_REFRESH_TOKEN_B64='$REFRESH_B64' CURSOR_EMAIL_B64='$EMAIL_B64' CURSOR_MACHINE_ID_B64='$MACHINE_ID_B64' bash -s" <<'REMOTE'
 set -euo pipefail
 
 decode_b64() {
@@ -539,15 +618,19 @@ decode_b64() {
   fi
 }
 
-# Run the headless installer
-curl -sfS https://9routerx.hyberorbit.com/install | sh -s -- --vps-headless
+# Run the headless installer from uploaded copy
+bash /tmp/9routerx-install.sh --vps-headless
+rm -f /tmp/9routerx-install.sh
 
-# Sync tokens if requested
-if [[ "${SYNC_TOKENS:-n}" =~ ^[Yy]$ ]] && [[ -n "${CURSOR_ACCESS_TOKEN_B64:-}" ]]; then
-  export CURSOR_ACCESS_TOKEN="$(decode_b64 "${CURSOR_ACCESS_TOKEN_B64}")"
-  export CURSOR_REFRESH_TOKEN="$(decode_b64 "${CURSOR_REFRESH_TOKEN_B64}")"
-  export CURSOR_EMAIL="$(decode_b64 "${CURSOR_EMAIL_B64}")"
+# Sync Cursor tokens
+if [[ -n "${CURSOR_ACCESS_TOKEN_B64:-}" ]]; then
+  CURSOR_ACCESS_TOKEN="$(decode_b64 "${CURSOR_ACCESS_TOKEN_B64}")"
+  CURSOR_REFRESH_TOKEN="$(decode_b64 "${CURSOR_REFRESH_TOKEN_B64}")"
+  CURSOR_EMAIL="$(decode_b64 "${CURSOR_EMAIL_B64}")"
+  CURSOR_MACHINE_ID="$(decode_b64 "${CURSOR_MACHINE_ID_B64:-}")"
 
+  # Write tokens to Cursor state DB (for other tools that read it)
+  export CURSOR_ACCESS_TOKEN CURSOR_REFRESH_TOKEN CURSOR_EMAIL CURSOR_MACHINE_ID
   mkdir -p "$HOME/.config/Cursor/User/globalStorage" "$HOME/.config/cursor/User/globalStorage"
   python3 - <<'PY'
 import os
@@ -556,6 +639,7 @@ import sqlite3
 access = os.environ.get("CURSOR_ACCESS_TOKEN", "")
 refresh = os.environ.get("CURSOR_REFRESH_TOKEN", "")
 email = os.environ.get("CURSOR_EMAIL", "")
+machine_id = os.environ.get("CURSOR_MACHINE_ID", "")
 
 paths = [
     os.path.expanduser("~/.config/Cursor/User/globalStorage/state.vscdb"),
@@ -571,10 +655,37 @@ for db_path in paths:
     cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/refreshToken", refresh))
     if email:
         cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("cursorAuth/cachedEmail", email))
+    if machine_id:
+        cur.execute("INSERT OR REPLACE INTO ItemTable(key, value) VALUES(?, ?)", ("storage.serviceMachineId", machine_id))
     conn.commit()
     conn.close()
 print("Cursor token sync complete")
 PY
+
+  # Register Cursor provider in 9router via its import API
+  if [[ -n "$CURSOR_ACCESS_TOKEN" && -n "$CURSOR_MACHINE_ID" ]]; then
+    # Wait for 9router to be ready
+    for _ in 1 2 3 4 5; do
+      if curl -sf http://127.0.0.1:20128/api/providers >/dev/null 2>&1; then
+        break
+      fi
+      sleep 2
+    done
+
+    IMPORT_RESP="$(curl -sf -X POST http://127.0.0.1:20128/api/oauth/cursor/import \
+      -H 'Content-Type: application/json' \
+      -d "{\"accessToken\":\"${CURSOR_ACCESS_TOKEN}\",\"machineId\":\"${CURSOR_MACHINE_ID}\"}" 2>&1 || true)"
+
+    if printf '%s' "$IMPORT_RESP" | grep -q '"success":true'; then
+      echo "Cursor provider registered in 9router"
+    else
+      echo "Warning: Could not auto-register Cursor provider: ${IMPORT_RESP}" >&2
+      echo "You can manually add it at http://YOUR_VPS_IP:20128/dashboard/providers" >&2
+    fi
+  else
+    echo "Warning: Missing machineId — Cursor provider not auto-registered" >&2
+    echo "Add it manually at http://YOUR_VPS_IP:20128/dashboard/providers" >&2
+  fi
 fi
 REMOTE
 
@@ -586,8 +697,8 @@ REMOTE
   printf "\n"
   hdr "Next steps"
   printf "      ${CYAN}1.${NC} Open 9router UI: ${BOLD}http://${VPS_IP}:20128${NC}\n"
-  printf "      ${CYAN}2.${NC} Complete provider logins (Claude, Copilot, Antigravity)\n"
-  printf "      ${CYAN}3.${NC} Run sync:  ${DIM}ssh ${TARGET_HOST} 'python3 ~/.9routerx/scripts/sync/9router_claude_sync.py'${NC}\n"
+  printf "      ${CYAN}2.${NC} Cursor provider was auto-registered from synced tokens\n"
+  printf "      ${CYAN}3.${NC} Add more providers if needed (Copilot, Antigravity, etc.)\n"
   printf "\n"
   sep
   printf "\n"
@@ -613,9 +724,11 @@ print_local_summary() {
     printf "      ${DIM}Run '9router' in terminal to start${NC}\n"
   fi
   printf "\n"
-  hdr "Sync"
-  printf "      ${DIM}python3 \"${ROOT_DIR}/scripts/sync/9router_claude_sync.py\"${NC}\n"
-  printf "      ${DIM}\"${ROOT_DIR}/scripts/sync/install_sync_cron.sh\"${NC}\n"
+  if [[ -f "${ROOT_DIR}/scripts/sync/9router_claude_sync.py" ]]; then
+    hdr "Sync"
+    printf "      ${DIM}python3 \"${ROOT_DIR}/scripts/sync/9router_claude_sync.py\"${NC}\n"
+    printf "      ${DIM}\"${ROOT_DIR}/scripts/sync/install_sync_cron.sh\"${NC}\n"
+  fi
   printf "\n"
   printf "  ${DIM}Mode: ${MODE}${NC}\n"
   printf "\n"
@@ -626,9 +739,17 @@ print_local_summary() {
 # ── Main ─────────────────────────────────────────────────────────────────────
 main() {
   parse_args "$@"
+
+  if [[ -n "${SYNC_TO:-}" ]]; then
+    REMOTE_TARGET_HOST="$SYNC_TO"
+    MODE="remote-vps"
+    remote_vps_install
+    return
+  fi
+
   resolve_mode
 
-  # Remote VPS mode — handled entirely separately
+  # Remote VPS mode — handled entirely separately (selected from menu or flags)
   if [[ "$MODE" == "remote-vps" ]]; then
     remote_vps_install
     return

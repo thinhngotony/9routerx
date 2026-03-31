@@ -22,41 +22,35 @@ Plus automatic sync of Claude settings whenever 9router tunnel/model routing cha
 ## Quick start
 
 ```sh
-curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh
+curl -sfS https://9routerx.hyberorbit.com/install | sh
 ```
 
 Installer supports mode selection:
 
 ```sh
 # Local machine with Cursor IDE login
-curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh -s -- --local-cursor
+curl -sfS https://9routerx.hyberorbit.com/install | sh -s -- --local-cursor
 
 # VPS gateway (headless, Cursor optional)
-curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh -s -- --vps-headless
+curl -sfS https://9routerx.hyberorbit.com/install | sh -s -- --vps-headless
+
+# Sync Cursor tokens from this machine to a remote VPS (auto-installs if needed)
+curl -sfS https://9routerx.hyberorbit.com/install | sh -s -- --sync-to root@YOUR_VPS_IP --ssh-port 22
 ```
 
 Alternative (local clone):
 
 ```bash
-cd /Users/tony/personal/9routerx
 chmod +x scripts/install.sh scripts/sync/install_sync_cron.sh
 ./scripts/install.sh
 ```
 
-### Fully automated VPS bootstrap (includes Cursor token transfer)
+### Sync Cursor tokens to VPS (auto-installs on first run)
 
 Run this from your local machine (where Cursor is already logged in):
 
 ```bash
-cd /Users/tony/personal/9routerx
-chmod +x scripts/bootstrap-vps.sh
-./scripts/bootstrap-vps.sh root@YOUR_VPS_IP 22
-```
-
-Refresh only Cursor tokens (skip reinstall):
-
-```bash
-./scripts/bootstrap-vps.sh --sync-only root@YOUR_VPS_IP 22
+./scripts/install.sh --sync-to root@YOUR_VPS_IP --ssh-port 22
 ```
 
 This command:
@@ -64,26 +58,12 @@ This command:
 - transfers them to VPS over SSH (base64-encoded env vars)
 - runs the remote installer with token seeding
 
-Recommended flow:
-
-```bash
-# First-time VPS setup in headless mode
-curl -sfS https://raw.githubusercontent.com/thinhngotony/9routerx/master/install-universal.sh | sh -s -- --vps-headless
-
-# Later, sync Cursor tokens from your local machine (optional provider)
-./scripts/bootstrap-vps.sh --sync-only root@YOUR_VPS_IP 22
-```
-
 ### Health check (doctor)
 
 ```bash
-cd /Users/tony/personal/9routerx
-chmod +x scripts/doctor.sh
-
-# Auto mode (Linux -> vps-headless, others -> local-cursor)
 ./scripts/doctor.sh
 
-# Explicit mode
+# Explicit mode (non-interactive safe)
 ./scripts/doctor.sh --mode local-cursor
 ./scripts/doctor.sh --mode vps-headless
 ```
@@ -111,25 +91,9 @@ python3 scripts/combo.py create \
   --validate
 ```
 
-Create a combo (round-robin):
-
-```bash
-python3 scripts/combo.py create \
-  --name sonnet-pool \
-  --models cc/claude-sonnet-4-6,ag/claude-sonnet-4-6 \
-  --strategy round-robin \
-  --validate
-```
-
-List combos:
-
-```bash
-python3 scripts/combo.py list
-```
-
 Then in Claude Code, set your default model to the **combo name** (virtual model id), e.g. `opus-4-6`.
 
-After `9router` install/login/setup is done by user, run:
+After `9router` install/login/setup is done, run the sync:
 
 ```bash
 python3 scripts/sync/9router_claude_sync.py
@@ -156,7 +120,6 @@ curl -sfS https://9routerx.hyberorbit.com/install | sh
 
 ```sh
 npm install -g wrangler
-cd /Users/tony/personal/9routerx
 wrangler deploy
 ```
 
