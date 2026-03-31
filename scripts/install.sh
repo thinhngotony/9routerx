@@ -455,6 +455,75 @@ DBJSON
 }
 
 # ── Start daemon ─────────────────────────────────────────────────────────────
+_wait_for_9router() {
+  local i
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -sf http://127.0.0.1:20128/api/providers >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+_install_systemd_service() {
+  local router_bin="$1"
+  local startup_log="$HOME/.9router/startup.log"
+
+  # Only install if systemd is present and reachable
+  if ! has_cmd systemctl; then
+    return 1
+  fi
+  if ! systemctl status >/dev/null 2>&1 && ! systemctl is-system-running >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local service_name="9router"
+  local service_file="/etc/systemd/system/${service_name}.service"
+  local run_user="${SUDO_USER:-$USER}"
+
+  cat > /tmp/9router.service <<UNIT
+[Unit]
+Description=9router AI gateway
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=${run_user}
+ExecStart=${router_bin} --no-browser --host 0.0.0.0 --port 20128
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:${startup_log}
+StandardError=append:${startup_log}
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+  if [[ "$(id -u)" -eq 0 ]]; then
+    mv /tmp/9router.service "$service_file"
+  elif has_cmd sudo; then
+    sudo mv /tmp/9router.service "$service_file"
+  else
+    wrn "Cannot install systemd service (no sudo). 9router will not auto-start on reboot."
+    rm -f /tmp/9router.service
+    return 1
+  fi
+
+  if has_cmd sudo && [[ "$(id -u)" -ne 0 ]]; then
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now "$service_name" >/dev/null 2>&1
+  else
+    systemctl daemon-reload
+    systemctl enable --now "$service_name" >/dev/null 2>&1
+  fi
+
+  ok "9router systemd service installed (auto-start on reboot)"
+  return 0
+}
+
 start_9router_daemon() {
   [[ "$OS" != "Linux" ]] && return
 
@@ -467,20 +536,30 @@ start_9router_daemon() {
     return
   fi
 
-  if pgrep -f "$router_bin" >/dev/null 2>&1; then
+  # Check if already running and healthy
+  if _wait_for_9router 2>/dev/null && pgrep -f "$router_bin" >/dev/null 2>&1; then
     ok "9router already running"
     return
   fi
 
   touch "$startup_log"
   info "Starting 9router daemon (0.0.0.0:20128)"
-  nohup "$router_bin" --no-browser --host 0.0.0.0 --port 20128 >> "$startup_log" 2>&1 &
-  sleep 3
 
-  if pgrep -f "$router_bin" >/dev/null 2>&1; then
-    ok "9router started"
+  # Prefer systemd for auto-restart and boot persistence
+  if _install_systemd_service "$router_bin"; then
+    :  # service started by systemd enable --now
   else
-    err "9router failed to start — see $startup_log"
+    # Fallback: nohup (no auto-restart on crash or reboot)
+    nohup "$router_bin" --no-browser --host 0.0.0.0 --port 20128 >> "$startup_log" 2>&1 &
+    wrn "Running without systemd — 9router will NOT restart automatically on reboot or crash"
+    wrn "To fix: install systemd or manually add a cron '@reboot' entry"
+  fi
+
+  info "Waiting for 9router to be ready…"
+  if _wait_for_9router; then
+    ok "9router is ready at http://0.0.0.0:20128"
+  else
+    err "9router did not become ready in time — check $startup_log"
   fi
 }
 
@@ -664,23 +743,29 @@ PY
 
   # Register Cursor provider in 9router via its import API
   if [[ -n "$CURSOR_ACCESS_TOKEN" && -n "$CURSOR_MACHINE_ID" ]]; then
-    # Wait for 9router to be ready
-    for _ in 1 2 3 4 5; do
+    # Wait for 9router to be ready (up to 60 s — systemd start can be slow)
+    _ready=0
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
       if curl -sf http://127.0.0.1:20128/api/providers >/dev/null 2>&1; then
+        _ready=1
         break
       fi
-      sleep 2
+      sleep 4
     done
-
-    IMPORT_RESP="$(curl -sf -X POST http://127.0.0.1:20128/api/oauth/cursor/import \
-      -H 'Content-Type: application/json' \
-      -d "{\"accessToken\":\"${CURSOR_ACCESS_TOKEN}\",\"machineId\":\"${CURSOR_MACHINE_ID}\"}" 2>&1 || true)"
-
-    if printf '%s' "$IMPORT_RESP" | grep -q '"success":true'; then
-      echo "Cursor provider registered in 9router"
+    if [[ "$_ready" -eq 0 ]]; then
+      echo "Warning: 9router did not become ready in time — skipping provider auto-register" >&2
+      echo "Start 9router manually, then re-run: curl -X POST http://127.0.0.1:20128/api/oauth/cursor/import ..." >&2
     else
-      echo "Warning: Could not auto-register Cursor provider: ${IMPORT_RESP}" >&2
-      echo "You can manually add it at http://YOUR_VPS_IP:20128/dashboard/providers" >&2
+      IMPORT_RESP="$(curl -sf -X POST http://127.0.0.1:20128/api/oauth/cursor/import \
+        -H 'Content-Type: application/json' \
+        -d "{\"accessToken\":\"${CURSOR_ACCESS_TOKEN}\",\"machineId\":\"${CURSOR_MACHINE_ID}\"}" 2>&1 || true)"
+
+      if printf '%s' "$IMPORT_RESP" | grep -q '"success":true'; then
+        echo "Cursor provider registered in 9router"
+      else
+        echo "Warning: Could not auto-register Cursor provider: ${IMPORT_RESP}" >&2
+        echo "You can manually add it at http://YOUR_VPS_IP:20128/dashboard/providers" >&2
+      fi
     fi
   else
     echo "Warning: Missing machineId — Cursor provider not auto-registered" >&2
@@ -688,6 +773,56 @@ PY
   fi
 fi
 REMOTE
+
+  # ── Post-install verification ──────────────────────────────────────────────
+  sep
+  hdr "Verifying remote install"
+
+  local doctor_src="${ROOT_DIR}/scripts/doctor.sh"
+  if [[ ! -f "$doctor_src" ]]; then
+    wrn "doctor.sh not found locally — skipping remote verification"
+  else
+    info "Uploading doctor to ${TARGET_HOST}"
+    scp "${SSH_OPTS[@]}" -P "$SSH_PORT" "$doctor_src" "${TARGET_HOST}:/tmp/9routerx-doctor.sh" 2>/dev/null
+
+    local doctor_out doctor_ok=0
+    if doctor_out=$(ssh "${SSH_OPTS[@]}" -p "$SSH_PORT" "$TARGET_HOST" \
+        "bash /tmp/9routerx-doctor.sh --mode vps-headless 2>&1; rm -f /tmp/9routerx-doctor.sh" 2>&1); then
+      doctor_ok=1
+    fi
+
+    # Print the remote doctor report with indentation
+    printf "\n"
+    while IFS= read -r line; do
+      printf "    %s\n" "$line"
+    done <<< "$doctor_out"
+    printf "\n"
+
+    if [[ "$doctor_ok" -eq 0 ]]; then
+      wrn "Verification found issues on ${TARGET_HOST}"
+
+      if ! tty_available; then
+        wrn "No TTY — skipping fix prompt. Re-run installer or SSH in and run: doctor.sh --mode vps-headless --fix"
+      else
+        local fix_confirm
+        fix_confirm="$(tty_read "      Attempt to fix issues on ${TARGET_HOST}? (y/N)" "N")"
+        if [[ "$fix_confirm" =~ ^[Yy]$ ]]; then
+          sep
+          hdr "Fixing issues on ${TARGET_HOST}"
+          scp "${SSH_OPTS[@]}" -P "$SSH_PORT" "$doctor_src" "${TARGET_HOST}:/tmp/9routerx-doctor.sh" 2>/dev/null
+          ssh "${SSH_OPTS[@]}" -p "$SSH_PORT" "$TARGET_HOST" \
+            "bash /tmp/9routerx-doctor.sh --mode vps-headless --fix --yes 2>&1; rm -f /tmp/9routerx-doctor.sh" \
+            | while IFS= read -r line; do printf "    %s\n" "$line"; done
+          printf "\n"
+          ok "Fix attempt complete"
+        else
+          info "No fixes applied. SSH in and run: ./scripts/doctor.sh --mode vps-headless --fix"
+        fi
+      fi
+    else
+      ok "All checks passed on ${TARGET_HOST}"
+    fi
+  fi
 
   # ── Summary ────────────────────────────────────────────────────────────────
   local VPS_IP="${TARGET_HOST#*@}"
