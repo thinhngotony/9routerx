@@ -973,6 +973,37 @@ PY
     exit 1
   fi
 
+  # ── Ensure ANTHROPIC_AUTH_TOKEN exists so Claude Code sends a valid header ────
+  # 9router is a local proxy and does not enforce authentication, so any
+  # non-empty token value works.  We write "9router" as a recognisable sentinel
+  # only when no real token is already present.
+  local claude_settings="$HOME/.claude/settings.json"
+  if [[ -f "$claude_settings" ]]; then
+    local existing_token
+    existing_token="$(python3 - <<PY 2>/dev/null || echo ""
+import json
+with open("${claude_settings}") as f:
+    d = json.load(f)
+print(d.get("env", {}).get("ANTHROPIC_AUTH_TOKEN", ""))
+PY
+)"
+    if [[ -z "${existing_token:-}" ]]; then
+      python3 - <<PY
+import json, os
+path = "${claude_settings}"
+with open(path) as f:
+    d = json.load(f)
+d.setdefault("env", {})["ANTHROPIC_AUTH_TOKEN"] = "9router"
+tmp = path + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(d, f, indent=2)
+    f.write("\n")
+os.replace(tmp, path)
+PY
+      ok "Set ANTHROPIC_AUTH_TOKEN = \"9router\" in ~/.claude/settings.json"
+    fi
+  fi
+
   # ── Apply config ─────────────────────────────────────────────────────────────
   sep
   hdr "Configuring local tools"

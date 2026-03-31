@@ -146,9 +146,19 @@ def get_effective_base_url(router_url: Optional[str]) -> str:
 
 # ── Model probe ────────────────────────────────────────────────────────────────
 
-def _model_works(router_base: str, api_key: str, model: str) -> bool:
+def _model_works(router_base: str, model: str, api_key: str = "") -> bool:
+    """
+    Probe whether `model` is reachable via the 9router proxy.
+
+    9router does not enforce authentication — it acts as a local proxy and
+    accepts any non-empty Bearer token.  We use the caller-supplied key when
+    available, and fall back to a sentinel value so the HTTP header is always
+    well-formed.  This means model probing works correctly even before the
+    user has set ANTHROPIC_AUTH_TOKEN.
+    """
+    token = api_key.strip() or "9router"
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
     body = {
@@ -171,12 +181,12 @@ def _model_works(router_base: str, api_key: str, model: str) -> bool:
 
 
 def pick_working_model(
-    router_base: str, api_key: str, candidates: List[str], current: str
+    router_base: str, candidates: List[str], current: str, api_key: str = ""
 ) -> str:
-    if current and _model_works(router_base, api_key, current):
+    if current and _model_works(router_base, current, api_key):
         return current
     for candidate in candidates:
-        if _model_works(router_base, api_key, candidate):
+        if _model_works(router_base, candidate, api_key):
             return candidate
     return current
 
@@ -207,23 +217,18 @@ def sync_claude_code(router_base: str, verbose: bool) -> bool:
         if verbose:
             print(f"Claude Code  ANTHROPIC_BASE_URL: {old!r} → {desired_base_url!r}")
 
+    # Use the stored token if present; the proxy accepts any non-empty value so
+    # model probing works even on a fresh install before the user sets a token.
     api_key = env.get("ANTHROPIC_AUTH_TOKEN", "").strip()
-    if not api_key:
-        if verbose:
-            print(
-                "ANTHROPIC_AUTH_TOKEN missing in ~/.claude/settings.json — "
-                "skipping model alias sync",
-                file=sys.stderr,
-            )
-    else:
-        for env_key, candidates in MODEL_CANDIDATES.items():
-            current = env.get(env_key, "")
-            chosen = pick_working_model(router_base, api_key, candidates, current)
-            if chosen and chosen != current:
-                env[env_key] = chosen
-                changed = True
-                if verbose:
-                    print(f"Claude Code  {env_key}: {current!r} → {chosen!r}")
+
+    for env_key, candidates in MODEL_CANDIDATES.items():
+        current = env.get(env_key, "")
+        chosen = pick_working_model(router_base, candidates, current, api_key)
+        if chosen and chosen != current:
+            env[env_key] = chosen
+            changed = True
+            if verbose:
+                print(f"Claude Code  {env_key}: {current!r} → {chosen!r}")
 
     if changed:
         write_json_file(CLAUDE_SETTINGS, settings)
