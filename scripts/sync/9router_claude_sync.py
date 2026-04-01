@@ -584,7 +584,7 @@ def sync_once(
         print(f"9router base URL: {router_base}")
 
     changed = False
-    changed |= sync_claude_code(router_base, verbose)
+    changed |= sync_claude_code(router_base, use_combos, verbose)
 
     if sync_cursor:
         changed |= sync_cursor_settings(router_base, verbose)
@@ -638,6 +638,11 @@ Examples:
         "--sync-shell",
         action="store_true",
         help="Also update shell profiles (~/.bashrc, ~/.zshrc) with ANTHROPIC_BASE_URL.",
+    )
+    parser.add_argument(
+        "--use-combos",
+        action="store_true",
+        help="Prefer server combos when choosing ANTHROPIC_DEFAULT_*_MODEL (opt-in).",
     )
     parser.add_argument(
         "--shell-profile",

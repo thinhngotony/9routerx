@@ -1128,7 +1128,22 @@ PY
   printf "         ${CYAN}claude config list${NC}\n"
   printf "         ${DIM}→ Check ANTHROPIC_BASE_URL${NC}\n"
   printf "\n"
-  printf "         ${CYAN}source ~/.bashrc && echo \$ANTHROPIC_BASE_URL${NC}\n"
+  local shell_profile=""
+  if [[ -f "$HOME/.zshrc" ]]; then
+    shell_profile="$HOME/.zshrc"
+  elif [[ -f "$HOME/.bashrc" ]]; then
+    shell_profile="$HOME/.bashrc"
+  elif [[ -f "$HOME/.bash_profile" ]]; then
+    shell_profile="$HOME/.bash_profile"
+  elif [[ -f "$HOME/.profile" ]]; then
+    shell_profile="$HOME/.profile"
+  fi
+
+  if [[ -n "$shell_profile" ]]; then
+    printf "         ${CYAN}source %s && echo \$ANTHROPIC_BASE_URL${NC}\n" "$shell_profile"
+  else
+    printf "         ${CYAN}echo \$ANTHROPIC_BASE_URL${NC}\n"
+  fi
   printf "         ${DIM}→ Verify shell environment${NC}\n"
   printf "\n"
   hdr "Re-run Setup"
