@@ -473,8 +473,8 @@ UNIT
   # Verify recovery ─────────────────────────────────────────────────────────────
   printf "\n"
   info "Waiting for 9router to be ready…"
-  local i code
-  for i in 1 2 3 4 5 6 7 8 9 10; do
+  local _i code
+  for _i in 1 2 3 4 5 6 7 8 9 10; do
     code="$(curl -sS -m 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:20128/api/providers 2>/dev/null || echo "000")"
     if [[ "$code" =~ ^(200|401|403)$ ]]; then
       printf "  ${GREEN}✓${NC} 9router is up at ${BOLD}http://127.0.0.1:20128${NC}\n"

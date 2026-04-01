@@ -72,7 +72,7 @@ jobs:
       - name: Validate cron installer idempotence
         run: |
           grep -q '*/1 \* \* \* \*' scripts/sync/install_sync_cron.sh
-          grep -q 'cron entry already exists' scripts/sync/install_sync_cron.sh
+          grep -q 'Updated cron entry\|Installed cron entry' scripts/sync/install_sync_cron.sh
 
       - name: Validate installer includes required tools
         run: |

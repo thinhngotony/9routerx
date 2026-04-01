@@ -25,11 +25,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
 BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
 WHITE='\033[0;37m'
 DIM='\033[2m'
 BOLD='\033[1m'
-ITALIC='\033[3m'
 NC='\033[0m'
 
 ok()    { printf "      ${GREEN}✓${NC}  %s\n" "$*"; }
@@ -497,8 +495,8 @@ DBJSON
 
 # ── Start daemon ─────────────────────────────────────────────────────────────
 _wait_for_9router() {
-  local i
-  for i in 1 2 3 4 5 6 7 8 9 10; do
+  local _i
+  for _i in 1 2 3 4 5 6 7 8 9 10; do
     if curl -sf http://127.0.0.1:20128/api/providers >/dev/null 2>&1; then
       return 0
     fi
@@ -1027,18 +1025,21 @@ PY
 
     # Try to generate a real API key via SSH
     local api_key=""
-    if api_key=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$vps_host" 'bash -s' <<'REMOTE' 2>/dev/null); then
+    local _remote_script
+    _remote_script="$(mktemp /tmp/9rx-genkey-XXXXXX.sh)"
+    cat > "$_remote_script" <<'GENKEY'
 set -euo pipefail
 ROUTER_BASE="http://127.0.0.1:20128"
 KEY_RESP=$(curl -sf -X POST "${ROUTER_BASE}/api/keys" \
   -H "Content-Type: application/json" \
-  -d '{"name":"client-setup-'$(date +%s)'","scopes":["read","write"]}' 2>&1 || echo "")
+  -d "{\"name\":\"client-setup-$(date +%s)\",\"scopes\":[\"read\",\"write\"]}" 2>&1 || echo "")
 printf '%s' "$KEY_RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('key',''))" 2>/dev/null || true
-# Enable requireLogin
 curl -sf -X PATCH "${ROUTER_BASE}/api/settings" -H "Content-Type: application/json" -d '{"requireLogin":true}' >/dev/null 2>&1 || true
-REMOTE
+GENKEY
+    if api_key=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$vps_host" bash < "$_remote_script" 2>/dev/null); then
       api_key="${api_key// /}"  # strip whitespace
     fi
+    rm -f "$_remote_script"
 
     if [[ -n "${api_key:-}" ]] && [[ "$api_key" != "ERROR"* ]]; then
       ok "Generated key: ${BOLD}${api_key:0:12}...${NC}"
@@ -1200,7 +1201,7 @@ else:
 PY
     ok "Claude Code settings reverted"
   else
-    info "~/.claude/settings.json not found — skipping"
+    info "$HOME/.claude/settings.json not found — skipping"
   fi
 
   # Cursor settings
@@ -1316,7 +1317,7 @@ PY
       info "Kept ~/.9router/ — delete manually if needed"
     fi
   else
-    info "~/.9router/ not found"
+    info "$HOME/.9router/ not found"
   fi
 
   [[ "$scope" -eq 2 ]] && { sep; printf "\n  ${GREEN}${BOLD}✓ 9router stopped and data removed${NC}\n\n"; return 0; }
