@@ -282,19 +282,26 @@ def _combos_by_tier(combos: List[Dict]) -> Dict[str, List[str]]:
     return by_tier
 
 
-def discover_model_candidates(router_base: str, api_key: str = "") -> Dict[str, List[str]]:
+def discover_model_candidates(
+    router_base: str,
+    api_key: str = "",
+    use_combos: bool = False,
+) -> Dict[str, List[str]]:
     """
-    Query 9router for combos first (preferred), then fall back to raw provider
-    models from /api/providers, then to STATIC_MODEL_CANDIDATES.
+    Query 9router for candidate model IDs.
 
-    Combos are preferred because they already encode fallback/round-robin logic
-    and the user has explicitly configured them.  A working combo name is put
-    at the front of each tier's candidate list.
+    When use_combos=True, we fetch server combos and prefer combo names first.
+    Otherwise we use raw provider model candidates (legacy behavior) and static
+    fallbacks.
     """
-    # ── Fetch server combos and prepend them to each tier's list ──────────────
-    combos = fetch_combos(router_base, api_key)
-    combo_by_tier = _combos_by_tier(combos) if combos else {}
-    unclassified = combo_by_tier.get("_unclassified", []) if combo_by_tier else []
+    combos: List[Dict] = []
+    combo_by_tier: Dict[str, List[str]] = {}
+    unclassified: List[str] = []
+
+    if use_combos:
+        combos = fetch_combos(router_base, api_key)
+        combo_by_tier = _combos_by_tier(combos) if combos else {}
+        unclassified = combo_by_tier.get("_unclassified", []) if combo_by_tier else []
 
     try:
         data = request_json(f"{router_base}/api/providers", timeout=8)
@@ -388,7 +395,7 @@ def discover_model_candidates(router_base: str, api_key: str = "") -> Dict[str, 
 
 # ── Sync: Claude Code ──────────────────────────────────────────────────────────
 
-def sync_claude_code(router_base: str, verbose: bool) -> bool:
+def sync_claude_code(router_base: str, use_combos: bool, verbose: bool) -> bool:
     """
     Update ~/.claude/settings.json:
       env.ANTHROPIC_BASE_URL → <router_base>/v1
@@ -563,6 +570,7 @@ def sync_once(
     router_url: Optional[str],
     sync_cursor: bool,
     sync_shell: bool,
+    use_combos: bool,
     shell_profiles: Optional[List[str]],
     verbose: bool,
 ) -> int:

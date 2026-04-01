@@ -20,15 +20,16 @@ export NPM_CONFIG_CACHE="$NINE_ROUTERX_NPM_CACHE"
 mkdir -p "$NPM_CONFIG_CACHE" 2>/dev/null || true
 
 # ── Colors ───────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-BLUE='\033[0;34m'
-WHITE='\033[0;37m'
-DIM='\033[2m'
-BOLD='\033[1m'
-NC='\033[0m'
+# Use $'..' so escape sequences become real ANSI control codes (not literal "\\033").
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[0;33m'
+CYAN=$'\033[0;36m'
+BLUE=$'\033[0;34m'
+WHITE=$'\033[0;37m'
+DIM=$'\033[2m'
+BOLD=$'\033[1m'
+NC=$'\033[0m'
 
 ok()    { printf "      ${GREEN}✓${NC}  %s\n" "$*"; }
 info()  { printf "      ${CYAN}→${NC}  %s\n" "$*"; }
@@ -996,6 +997,24 @@ PY
     4) sync_flags="$sync_flags --sync-cursor --sync-shell" ;;
     *) err "Invalid choice: ${target_choice}"; exit 1 ;;
   esac
+
+  # ── Combo defaults (opt-in) ───────────────────────────────────────────────────
+  # Only relevant when syncing Claude Code (choice 1 or 4). We ask before
+  # changing model defaults to combo names from the server.
+  local use_combos_flag=""
+  if [[ "${target_choice:-4}" == "1" || "${target_choice:-4}" == "4" ]]; then
+    local combo_confirm
+    combo_confirm="$(tty_read "      Use server combos for Claude default models? (y/N)" "N")"
+    if [[ "$combo_confirm" =~ ^[Yy]$ ]]; then
+      use_combos_flag="--use-combos"
+      ok "Combos enabled — Claude defaults may switch to server combo names"
+    else
+      info "Combos not enabled — keeping legacy/default model selection"
+    fi
+  fi
+
+  # Append after selection so it flows into both one-shot sync and cron
+  sync_flags="$sync_flags ${use_combos_flag}"
 
   # ── Locate sync script ───────────────────────────────────────────────────────
   local sync_script
