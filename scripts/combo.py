@@ -36,12 +36,18 @@ def write_json(path: str, data: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
-def http_json(url: str, method: str = "GET", headers: Optional[Dict[str, str]] = None, body: Optional[Dict[str, Any]] = None) -> Any:
+def http_json(
+    url: str,
+    method: str = "GET",
+    headers: Optional[Dict[str, str]] = None,
+    body: Optional[Dict[str, Any]] = None,
+    timeout: int = 10,
+) -> Any:
     data = None
     if body is not None:
         data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url=url, method=method, headers=headers or {}, data=data)
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         raw = resp.read().decode("utf-8")
     return json.loads(raw) if raw else None
 
@@ -245,6 +251,60 @@ def cmd_create(args: argparse.Namespace) -> int:
     return 0
 
 
+def _probe_model(api_base: str, model: str, api_key: Optional[str]) -> Tuple[bool, str]:
+    headers: Dict[str, str] = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    else:
+        headers["Authorization"] = "Bearer 9router"
+
+    body = {
+        "model": model,
+        "max_tokens": 16,
+        "stream": False,
+        "messages": [{"role": "user", "content": "ping"}],
+    }
+
+    try:
+        http_json(f"{api_base}/v1/messages", method="POST", headers=headers, body=body)
+        return True, "ok"
+    except urllib.error.HTTPError as e:
+        try:
+            payload = e.read().decode("utf-8", errors="ignore")
+        except Exception:
+            payload = ""
+        msg = payload.strip() or f"HTTP {getattr(e, 'code', '?')}"
+        return False, msg
+    except Exception as e:
+        return False, str(e)
+
+
+def cmd_test(args: argparse.Namespace) -> int:
+    if not os.path.exists(NINE_ROUTER_DB):
+        print(f"Missing {NINE_ROUTER_DB}", file=sys.stderr)
+        return 1
+
+    db = read_json(NINE_ROUTER_DB)
+    combos = list_combos(db)
+    combo = next((c for c in combos if c.name == args.name), None)
+    if not combo:
+        print(f"Combo not found: {args.name}", file=sys.stderr)
+        return 2
+
+    api_key = args.api_key or get_active_api_key_from_db(db)
+    api_base = (args.api or NINE_ROUTER_API).rstrip("/")
+
+    print(f"Testing combo: {combo.name}")
+    ok_all = True
+    for m in combo.models:
+        ok, detail = _probe_model(api_base, m, api_key)
+        status = "OK" if ok else "FAIL"
+        print(f"- {status}\t{m}\t{detail}")
+        ok_all &= ok
+
+    return 0 if ok_all else 3
+
+
 def cmd_delete(args: argparse.Namespace) -> int:
     if not os.path.exists(NINE_ROUTER_DB):
         print(f"Missing {NINE_ROUTER_DB}", file=sys.stderr)
@@ -284,6 +344,10 @@ def main() -> int:
     sp_create.add_argument("--strategy", default="fallback", help="fallback or round-robin (default: fallback)")
     sp_create.add_argument("--validate", action="store_true", help="Validate model ids exist in /api/v1/models")
     sp_create.set_defaults(func=cmd_create)
+
+    sp_test = sub.add_parser("test", help="Test a combo against the router (/v1/messages for each underlying model).")
+    sp_test.add_argument("--name", required=True, help="Combo name to test")
+    sp_test.set_defaults(func=cmd_test)
 
     sp_delete = sub.add_parser("delete", help="Delete a combo by name.")
     sp_delete.add_argument("--name", required=True, help="Combo name to delete")

@@ -27,6 +27,7 @@ Usage:
   9routerx combos list
   9routerx combos create
   9routerx combos delete <name>
+  9routerx combos test <name>
   9routerx point-to <router-url> [--only claude|cursor|shell]
   9routerx point-to --show
 
@@ -49,7 +50,7 @@ models_raw() {
 
 models_grouped() {
   need_python
-  models_raw | python3 - <<'PY'
+  python3 -c '
 import signal
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 import sys
@@ -69,7 +70,7 @@ for p in order:
     for m in groups[p]:
         print(f"  {m}")
     print()
-PY
+' < <(models_raw)
 }
 
 combos_list() {
@@ -120,15 +121,13 @@ combo_create_interactive() {
 
   # Build list and capture selection.
   local models_csv
-  models_csv="$(models_raw | python3 - <<'PY'
-import signal
+  models_csv="$(models_raw | python3 -c '
+import signal, sys
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-import sys
 models = [l.strip() for l in sys.stdin if l.strip()]
 for i, m in enumerate(models, start=1):
     print(f"{i:3d}) {m}")
-PY
-  )"
+')"
   echo "$models_csv"
 
   echo
@@ -140,35 +139,26 @@ PY
   fi
 
   local models
-  models="$(models_raw | python3 - <<PY
-import signal
-signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-import sys
-
-picked = ${picked@Q}
-nums = []
+  models="$(models_raw | PICKED="$picked" python3 -c 'import os,sys
+picked=os.environ.get("PICKED","")
+nums=[]
 for part in picked.split(","):
-    part = part.strip()
+    part=part.strip()
     if not part:
         continue
     nums.append(int(part))
-
-models = [l.strip() for l in sys.stdin if l.strip()]
-
-selected = []
+models=[l.strip() for l in sys.stdin if l.strip()]
+selected=[]
 for n in nums:
-    if n < 1 or n > len(models):
+    if n<1 or n>len(models):
         print(f"Invalid selection: {n}", file=sys.stderr)
         sys.exit(2)
     selected.append(models[n-1])
-
-if len(selected) < 2:
+if len(selected)<2:
     print("Select at least 2 models", file=sys.stderr)
     sys.exit(2)
-
 print(",".join(selected))
-PY
-  )"
+')"
 
   echo
   echo "Creating combo:"

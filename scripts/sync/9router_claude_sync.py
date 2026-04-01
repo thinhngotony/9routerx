@@ -212,13 +212,90 @@ def _extract_version(model_id: str) -> tuple:
     return (major, minor, patch)
 
 
-def discover_model_candidates(router_base: str) -> Dict[str, List[str]]:
+def fetch_combos(router_base: str, api_key: str = "") -> List[Dict]:
     """
-    Query 9router /api/providers to auto-discover available models.
-    Returns a dict mapping ANTHROPIC_DEFAULT_*_MODEL to candidate lists,
-    sorted newest → oldest.
-    Falls back to STATIC_MODEL_CANDIDATES if discovery fails.
+    Fetch all combos currently configured on the 9router server.
+    Returns a list of combo dicts: {id, name, models, strategy}.
+    Falls back to reading the local db.json if the API call fails.
     """
+    headers: Dict[str, str] = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        data = request_json(f"{router_base}/api/combos", headers=headers, timeout=8)
+        combos = data if isinstance(data, list) else data.get("combos", [])
+        return [c for c in combos if isinstance(c, dict) and c.get("name")]
+    except Exception:
+        pass
+    # Fallback: read local db directly
+    db_path = os.path.expanduser("~/.9router/db.json")
+    if os.path.exists(db_path):
+        try:
+            db = read_json_file(db_path)
+            strategies = db.get("settings", {}).get("comboStrategies", {})
+            out = []
+            for c in db.get("combos", []):
+                if c.get("name"):
+                    c["strategy"] = strategies.get(c.get("id", ""), "fallback")
+                    out.append(c)
+            return out
+        except Exception:
+            pass
+    return []
+
+
+def _tier_of(model_id: str) -> str:
+    """Return 'sonnet', 'opus', 'haiku', or '' for a model/combo name."""
+    m = model_id.lower()
+    if "sonnet" in m:
+        return "sonnet"
+    if "opus" in m:
+        return "opus"
+    if "haiku" in m:
+        return "haiku"
+    return ""
+
+
+def _combos_by_tier(combos: List[Dict]) -> Dict[str, List[str]]:
+    """
+    Group combo names by the tier most of their member models belong to.
+    A combo whose name contains sonnet/opus/haiku is assigned to that tier.
+    Unclassified combos are offered as candidates for all three tiers (as
+    generic fallbacks) so they still get picked up when no tier-specific
+    combo exists.
+    """
+    by_tier: Dict[str, List[str]] = {"sonnet": [], "opus": [], "haiku": [], "_unclassified": []}
+    for c in combos:
+        name = c.get("name", "")
+        tier = _tier_of(name)
+        if tier:
+            by_tier[tier].append(name)
+        else:
+            # Inspect member models for a majority tier
+            member_tiers = [_tier_of(m) for m in c.get("models", [])]
+            counts = {t: member_tiers.count(t) for t in ("sonnet", "opus", "haiku")}
+            best = max(counts, key=lambda t: counts[t])
+            if counts[best] > 0:
+                by_tier[best].append(name)
+            else:
+                by_tier["_unclassified"].append(name)
+    return by_tier
+
+
+def discover_model_candidates(router_base: str, api_key: str = "") -> Dict[str, List[str]]:
+    """
+    Query 9router for combos first (preferred), then fall back to raw provider
+    models from /api/providers, then to STATIC_MODEL_CANDIDATES.
+
+    Combos are preferred because they already encode fallback/round-robin logic
+    and the user has explicitly configured them.  A working combo name is put
+    at the front of each tier's candidate list.
+    """
+    # ── Fetch server combos and prepend them to each tier's list ──────────────
+    combos = fetch_combos(router_base, api_key)
+    combo_by_tier = _combos_by_tier(combos) if combos else {}
+    unclassified = combo_by_tier.get("_unclassified", []) if combo_by_tier else []
+
     try:
         data = request_json(f"{router_base}/api/providers", timeout=8)
         connections = data.get("connections", [])
@@ -271,14 +348,41 @@ def discover_model_candidates(router_base: str) -> Dict[str, List[str]]:
             reverse=True,
         )
 
+        def _prepend_combos(tier: str, raw: List[str]) -> List[str]:
+            tier_combos = combo_by_tier.get(tier, []) + unclassified if combo_by_tier else []
+            # Deduplicate while preserving order (combos first)
+            seen: set = set()
+            out = []
+            for m in tier_combos + raw:
+                if m not in seen:
+                    seen.add(m)
+                    out.append(m)
+            return out
+
         discovered = {
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": sonnet if sonnet else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_SONNET_MODEL"],
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": opus if opus else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_OPUS_MODEL"],
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": haiku if haiku else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_HAIKU_MODEL"],
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": _prepend_combos("sonnet", sonnet) if sonnet or combo_by_tier.get("sonnet") else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_SONNET_MODEL"],
+            "ANTHROPIC_DEFAULT_OPUS_MODEL": _prepend_combos("opus", opus) if opus or combo_by_tier.get("opus") else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_OPUS_MODEL"],
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": _prepend_combos("haiku", haiku) if haiku or combo_by_tier.get("haiku") else STATIC_MODEL_CANDIDATES["ANTHROPIC_DEFAULT_HAIKU_MODEL"],
         }
         return discovered
     except Exception:
         # Network error, 9router down, or API schema change — fall back
+        # Still prepend any locally-fetched combos so they are not lost.
+        if combo_by_tier:
+            def _prepend_static(tier: str, key: str) -> List[str]:
+                tier_combos = combo_by_tier.get(tier, []) + unclassified
+                seen: set = set()
+                out = []
+                for m in tier_combos + STATIC_MODEL_CANDIDATES[key]:
+                    if m not in seen:
+                        seen.add(m)
+                        out.append(m)
+                return out
+            return {
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": _prepend_static("sonnet", "ANTHROPIC_DEFAULT_SONNET_MODEL"),
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": _prepend_static("opus", "ANTHROPIC_DEFAULT_OPUS_MODEL"),
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": _prepend_static("haiku", "ANTHROPIC_DEFAULT_HAIKU_MODEL"),
+            }
         return STATIC_MODEL_CANDIDATES
 
 
@@ -312,9 +416,18 @@ def sync_claude_code(router_base: str, verbose: bool) -> bool:
     # model probing works even on a fresh install before the user sets a token.
     api_key = env.get("ANTHROPIC_AUTH_TOKEN", "").strip()
 
-    # Auto-discover available models from 9router (newest first).
-    # Falls back to static list if discovery fails.
-    model_candidates = discover_model_candidates(router_base)
+    # Auto-discover available models from 9router (combos first, then raw
+    # provider models, then static fallback).
+    model_candidates = discover_model_candidates(router_base, api_key)
+
+    # Log which combos were found on the server
+    if verbose:
+        combos = fetch_combos(router_base, api_key)
+        if combos:
+            names = ", ".join(c.get("name", "") for c in combos)
+            print(f"Server combos: {names}")
+        else:
+            print("Server combos: none configured")
 
     for env_key, candidates in model_candidates.items():
         current = env.get(env_key, "")
@@ -323,7 +436,8 @@ def sync_claude_code(router_base: str, verbose: bool) -> bool:
             env[env_key] = chosen
             changed = True
             if verbose:
-                print(f"Claude Code  {env_key}: {current!r} → {chosen!r}")
+                src = "combo" if not any(c in chosen for c in ["/", "-"]) else "model"
+                print(f"Claude Code  {env_key}: {current!r} → {chosen!r}  [{src}]")
 
     if changed:
         write_json_file(CLAUDE_SETTINGS, settings)
