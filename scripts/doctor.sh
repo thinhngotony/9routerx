@@ -183,8 +183,8 @@ check_systemd_service() {
   fi
 
   local svc_active=0 svc_enabled=0
-  systemctl is-active  --quiet 9router 2>/dev/null && svc_active=1  || true
-  systemctl is-enabled --quiet 9router 2>/dev/null && svc_enabled=1 || true
+  if systemctl is-active  --quiet 9router 2>/dev/null; then svc_active=1;  fi
+  if systemctl is-enabled --quiet 9router 2>/dev/null; then svc_enabled=1; fi
 
   if [[ "$svc_active" -eq 1 && "$svc_enabled" -eq 1 ]]; then
     pass "9router systemd service active and enabled on boot"
