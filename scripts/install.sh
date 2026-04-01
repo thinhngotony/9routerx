@@ -24,22 +24,41 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+WHITE='\033[0;37m'
 DIM='\033[2m'
 BOLD='\033[1m'
+ITALIC='\033[3m'
 NC='\033[0m'
 
-ok()   { printf "      ${GREEN}✓${NC} %s\n" "$*"; }
-info() { printf "      ${DIM}→${NC} %s\n" "$*"; }
-err()  { printf "      ${RED}✗${NC} %s\n" "$*" >&2; }
-wrn()  { printf "      ${YELLOW}!${NC} %s\n" "$*" >&2; }
-hdr()  { printf "\n  ${BOLD}%s${NC}\n\n" "$*"; }
-sep()  { printf "${DIM}  ────────────────────────────────────────────────────────────────${NC}\n"; }
+ok()    { printf "      ${GREEN}✓${NC}  %s\n" "$*"; }
+info()  { printf "      ${CYAN}→${NC}  %s\n" "$*"; }
+err()   { printf "      ${RED}✗${NC}  %s\n" "$*" >&2; }
+wrn()   { printf "      ${YELLOW}⚠${NC}  %s\n" "$*" >&2; }
+step()  { printf "      ${BLUE}•${NC}  %s\n" "$*"; }
+hdr()   { printf "\n  ${BOLD}${WHITE}%s${NC}\n\n" "$*"; }
+sep()   { printf "\n${DIM}  ────────────────────────────────────────────────────────────────${NC}\n"; }
+blank() { printf "\n"; }
 
-# Indent multi-line output for visual hierarchy
+# Branded banner
+banner() {
+  printf "\n"
+  printf "  ${BOLD}${CYAN}  ██████╗ ${YELLOW}██████╗  ${CYAN}██████╗ ${YELLOW}██╗   ██╗${CYAN}████████╗${YELLOW}███████╗${CYAN}██████╗ ██╗  ██╗${NC}\n" 2>/dev/null || true
+  printf "  ${BOLD}${CYAN} ██╔═══██╗${YELLOW}██╔══██╗${CYAN}██╔═══██╗${YELLOW}██║   ██║${CYAN}╚══██╔══╝${YELLOW}██╔════╝${CYAN}██╔══██╗╚██╗██╔╝${NC}\n" 2>/dev/null || true
+  printf "  ${BOLD}${CYAN} ██║   ██║${YELLOW}██████╔╝${CYAN}██║   ██║${YELLOW}██║   ██║${CYAN}   ██║   ${YELLOW}█████╗  ${CYAN}██████╔╝ ╚███╔╝${NC}\n" 2>/dev/null || true
+  printf "  ${BOLD}${CYAN} ╚██████╔╝${YELLOW}██║  ██╗${CYAN}╚██████╔╝${YELLOW}╚██████╔╝${CYAN}   ██║   ${YELLOW}███████╗${CYAN}██║  ██╗ ██╔██╗${NC}\n" 2>/dev/null || true
+  printf "  ${BOLD}${CYAN}  ╚═════╝ ${YELLOW}╚═╝  ╚═╝${CYAN} ╚═════╝  ${YELLOW}╚═════╝ ${CYAN}   ╚═╝   ${YELLOW}╚══════╝${CYAN}╚═╝  ╚═╝╚═╝ ╚═╝${NC}\n" 2>/dev/null || true
+  printf "\n"
+  printf "  ${DIM}Multi-provider AI gateway installer${NC}\n"
+  printf "\n"
+}
+
+# Indent multi-line subprocess output for visual hierarchy
 indent() {
-  local prefix="${1:-      }"
+  local prefix="${1:-         }"
   while IFS= read -r line; do
-    printf "%s%s\n" "$prefix" "$line"
+    [[ -n "$line" ]] && printf "%s%s\n" "$prefix" "$line"
   done
 }
 
@@ -132,16 +151,17 @@ choose_mode_if_needed() {
     exit 1
   fi
 
+  banner
   sep
-  hdr "9routerx Installer"
-  printf "      ${DIM}What would you like to do?${NC}\n\n"
-  printf "         ${CYAN}1${NC}  Install on ${BOLD}this machine${NC}         ${DIM}(laptop, server, or VPS)${NC}\n"
-  printf "         ${CYAN}2${NC}  Sync Cursor tokens to a ${BOLD}remote VPS${NC}  ${DIM}(auto-installs if needed)${NC}\n"
-  printf "         ${CYAN}3${NC}  Point ${BOLD}local tools${NC} at a remote VPS  ${DIM}(Claude Code, Cursor, shell)${NC}\n"
-  printf "\n"
+  hdr "What would you like to do?"
+  printf "      ${BOLD}${GREEN} 1 ${NC}  ${BOLD}Install${NC} on this machine          ${DIM}laptop, server, or VPS${NC}\n"
+  printf "      ${BOLD}${YELLOW} 2 ${NC}  ${BOLD}Sync${NC} Cursor tokens to a remote VPS  ${DIM}auto-installs if needed${NC}\n"
+  printf "      ${BOLD}${CYAN} 3 ${NC}  ${BOLD}Point${NC} local tools at a remote VPS  ${DIM}Claude Code, Cursor, shell${NC}\n"
+  printf "      ${BOLD}${RED} 4 ${NC}  ${BOLD}Uninstall${NC} / cleanup               ${DIM}revert configs, remove tools${NC}\n"
+  blank
 
   local choice
-  choice="$(tty_read "      Choice" "")"
+  choice="$(tty_read "      Choice [1-4]" "")"
   case "${choice:-}" in
     1)
       # Install on this machine. Internally choose mode by OS so we get the
@@ -158,8 +178,11 @@ choose_mode_if_needed() {
     3)
       MODE="client-setup"
       ;;
+    4)
+      MODE="uninstall"
+      ;;
     *)
-      err "Invalid choice: ${choice}"
+      err "Invalid choice: ${choice:-}"
       exit 1
       ;;
   esac
@@ -175,11 +198,9 @@ resolve_mode() {
   fi
 
   case "$MODE" in
-    local-cursor|vps-headless|remote-vps|client-setup) ;;
+    local-cursor|vps-headless|remote-vps|client-setup|uninstall) ;;
     *) err "Invalid mode: $MODE"; usage; exit 1 ;;
   esac
-
-  printf "\n"
 }
 
 # ── npm helpers ──────────────────────────────────────────────────────────────
@@ -1098,36 +1119,316 @@ PY
   printf "\n"
 }
 
+# ── Uninstall / cleanup ───────────────────────────────────────────────────────
+uninstall() {
+  if ! tty_available; then
+    err "Uninstall requires a TTY for interactive prompts."
+    exit 1
+  fi
+
+  sep
+  hdr "Uninstall / Cleanup"
+  printf "      ${DIM}Select what to clean up. Press Enter to accept defaults.${NC}\n\n"
+
+  # ── Scope selection ──────────────────────────────────────────────────────────
+  printf "      ${BOLD}What to remove:${NC}\n\n"
+  printf "         ${CYAN}1${NC}  Revert configs only         ${DIM}(Claude Code, Cursor, shell — keep tools)${NC}\n"
+  printf "         ${CYAN}2${NC}  Stop 9router + remove data  ${DIM}(systemd service, ~/.9router/, cron job)${NC}\n"
+  printf "         ${CYAN}3${NC}  ${BOLD}Full cleanup${NC}                 ${DIM}(everything above + uninstall tools)${NC}\n"
+  printf "\n"
+
+  local scope
+  scope="$(tty_read "      Choice [1-3]" "1")"
+  case "${scope:-1}" in
+    1|2|3) ;;
+    *) err "Invalid choice: ${scope}"; exit 1 ;;
+  esac
+
+  # ── Confirm ──────────────────────────────────────────────────────────────────
+  printf "\n"
+  printf "      ${YELLOW}${BOLD}This will make the following changes:${NC}\n\n"
+  [[ "$scope" -ge 1 ]] && printf "         ${YELLOW}•${NC}  Remove ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, model aliases from ~/.claude/settings.json\n"
+  [[ "$scope" -ge 1 ]] && printf "         ${YELLOW}•${NC}  Remove openai.baseUrl from Cursor settings.json\n"
+  [[ "$scope" -ge 1 ]] && printf "         ${YELLOW}•${NC}  Remove managed ANTHROPIC_BASE_URL export from shell profiles\n"
+  [[ "$scope" -ge 2 ]] && printf "         ${YELLOW}•${NC}  Stop and disable 9router systemd service\n"
+  [[ "$scope" -ge 2 ]] && printf "         ${YELLOW}•${NC}  Remove ~/.9router/ directory\n"
+  [[ "$scope" -ge 2 ]] && printf "         ${YELLOW}•${NC}  Remove 9router cron job\n"
+  [[ "$scope" -ge 3 ]] && printf "         ${YELLOW}•${NC}  Uninstall: 9router, claude, antigravity-ide, gh copilot extension, 9routerx CLI\n"
+  printf "\n"
+
+  local confirm
+  confirm="$(tty_read "      Proceed? (y/N)" "N")"
+  if ! [[ "$confirm" =~ ^[Yy]$ ]]; then
+    info "Aborted — no changes made."
+    return 0
+  fi
+
+  # ── Scope 1: revert configs ───────────────────────────────────────────────────
+  sep
+  hdr "Reverting Configurations"
+
+  # Claude Code settings
+  local claude_settings="$HOME/.claude/settings.json"
+  if [[ -f "$claude_settings" ]]; then
+    python3 - <<PY
+import json, os
+path = "${claude_settings}"
+try:
+    with open(path) as f:
+        d = json.load(f)
+except Exception:
+    d = {}
+env = d.get("env", {})
+removed = []
+for key in ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL"]:
+    if key in env:
+        del env[key]
+        removed.append(key)
+if not env:
+    d.pop("env", None)
+tmp = path + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(d, f, indent=2)
+    f.write("\n")
+os.replace(tmp, path)
+if removed:
+    print("Removed: " + ", ".join(removed))
+else:
+    print("Nothing to remove")
+PY
+    ok "Claude Code settings reverted"
+  else
+    info "~/.claude/settings.json not found — skipping"
+  fi
+
+  # Cursor settings
+  local cursor_settings=""
+  local candidate
+  for candidate in \
+    "$HOME/Library/Application Support/Cursor/User/settings.json" \
+    "$HOME/.config/Cursor/User/settings.json" \
+    "$HOME/.config/cursor/User/settings.json"
+  do
+    [[ -f "$candidate" ]] && cursor_settings="$candidate" && break
+  done
+
+  if [[ -n "$cursor_settings" ]]; then
+    python3 - <<PY
+import json, os
+path = r"""${cursor_settings}"""
+try:
+    with open(path) as f:
+        d = json.load(f)
+except Exception:
+    d = {}
+if "openai.baseUrl" in d:
+    del d["openai.baseUrl"]
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(d, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, path)
+    print("Removed openai.baseUrl")
+else:
+    print("openai.baseUrl not set — nothing to remove")
+PY
+    ok "Cursor settings reverted"
+  else
+    info "Cursor settings.json not found — skipping"
+  fi
+
+  # Shell profiles
+  local shell_marker="# managed by 9routerx"
+  local profile_changed=0
+  for profile in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+    [[ -f "$profile" ]] || continue
+    if grep -q "$shell_marker" "$profile" 2>/dev/null; then
+      # Remove lines containing the marker
+      local tmp_profile
+      tmp_profile="$(mktemp)"
+      grep -v "$shell_marker" "$profile" > "$tmp_profile"
+      mv "$tmp_profile" "$profile"
+      ok "Removed managed export from ${DIM}${profile}${NC}"
+      profile_changed=1
+    fi
+  done
+  [[ "$profile_changed" -eq 0 ]] && info "No managed shell exports found"
+
+  [[ "$scope" -eq 1 ]] && { sep; printf "\n  ${GREEN}${BOLD}✓ Config cleanup complete${NC}\n\n"; return 0; }
+
+  # ── Scope 2: stop service + remove data ──────────────────────────────────────
+  sep
+  hdr "Stopping 9router"
+
+  # Remove cron job
+  if crontab -l 2>/dev/null | grep -q "9router"; then
+    local tmp_cron
+    tmp_cron="$(mktemp)"
+    crontab -l 2>/dev/null | grep -v "9router" > "$tmp_cron" || true
+    crontab "$tmp_cron"
+    rm -f "$tmp_cron"
+    ok "Removed 9router cron job"
+  else
+    info "No 9router cron job found"
+  fi
+
+  # Stop systemd service (Linux only)
+  if [[ "$OS" == "Linux" ]] && has_cmd systemctl; then
+    local svc="9router"
+    if systemctl is-active --quiet "$svc" 2>/dev/null || systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+      if [[ "$(id -u)" -eq 0 ]]; then
+        systemctl stop "$svc" 2>/dev/null || true
+        systemctl disable "$svc" 2>/dev/null || true
+        rm -f "/etc/systemd/system/${svc}.service"
+        systemctl daemon-reload 2>/dev/null || true
+      elif has_cmd sudo; then
+        sudo systemctl stop "$svc" 2>/dev/null || true
+        sudo systemctl disable "$svc" 2>/dev/null || true
+        sudo rm -f "/etc/systemd/system/${svc}.service"
+        sudo systemctl daemon-reload 2>/dev/null || true
+      else
+        wrn "Cannot manage systemd without sudo"
+      fi
+      ok "9router systemd service stopped and removed"
+    else
+      info "9router systemd service not active"
+    fi
+  fi
+
+  # Kill any running 9router process
+  local router_bin
+  router_bin="$(command -v 9router 2>/dev/null || echo "")"
+  if [[ -n "$router_bin" ]] && pgrep -f "$router_bin" >/dev/null 2>&1; then
+    pkill -f "$router_bin" 2>/dev/null || true
+    ok "Killed running 9router process"
+  fi
+
+  # Remove ~/.9router directory
+  if [[ -d "$HOME/.9router" ]]; then
+    local del_confirm
+    del_confirm="$(tty_read "      Delete ${HOME}/.9router/ (database + logs)? (y/N)" "N")"
+    if [[ "$del_confirm" =~ ^[Yy]$ ]]; then
+      rm -rf "$HOME/.9router"
+      ok "Removed ~/.9router/"
+    else
+      info "Kept ~/.9router/ — delete manually if needed"
+    fi
+  else
+    info "~/.9router/ not found"
+  fi
+
+  [[ "$scope" -eq 2 ]] && { sep; printf "\n  ${GREEN}${BOLD}✓ 9router stopped and data removed${NC}\n\n"; return 0; }
+
+  # ── Scope 3: uninstall tools ──────────────────────────────────────────────────
+  sep
+  hdr "Uninstalling Tools"
+
+  # 9router npm package
+  if has_cmd npm && npm list -g 9router --depth=0 >/dev/null 2>&1; then
+    info "Removing 9router npm package"
+    npm_global_install() { :; }  # shadow to avoid reinstall side-effects
+    if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
+      npm uninstall -g 9router 2>/dev/null || true
+    else
+      sudo npm uninstall -g 9router 2>/dev/null || true
+    fi
+    ok "9router uninstalled"
+  else
+    info "9router npm package not found"
+  fi
+
+  # Claude Code
+  if has_cmd claude && npm list -g @anthropic-ai/claude-code --depth=0 >/dev/null 2>&1; then
+    local rem_claude
+    rem_claude="$(tty_read "      Uninstall Claude Code CLI? (y/N)" "N")"
+    if [[ "$rem_claude" =~ ^[Yy]$ ]]; then
+      if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
+        npm uninstall -g @anthropic-ai/claude-code 2>/dev/null || true
+      else
+        sudo npm uninstall -g @anthropic-ai/claude-code 2>/dev/null || true
+      fi
+      ok "Claude Code CLI uninstalled"
+    else
+      info "Kept Claude Code CLI"
+    fi
+  fi
+
+  # antigravity-ide
+  if has_cmd antigravity-ide || npm list -g antigravity-ide --depth=0 >/dev/null 2>&1; then
+    local rem_ag
+    rem_ag="$(tty_read "      Uninstall antigravity-ide? (y/N)" "N")"
+    if [[ "$rem_ag" =~ ^[Yy]$ ]]; then
+      if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
+        npm uninstall -g antigravity-ide 2>/dev/null || true
+      else
+        sudo npm uninstall -g antigravity-ide 2>/dev/null || true
+      fi
+      ok "antigravity-ide uninstalled"
+    else
+      info "Kept antigravity-ide"
+    fi
+  fi
+
+  # GitHub Copilot CLI extension
+  if has_cmd gh && gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
+    local rem_copilot
+    rem_copilot="$(tty_read "      Remove GitHub Copilot CLI extension? (y/N)" "N")"
+    if [[ "$rem_copilot" =~ ^[Yy]$ ]]; then
+      gh extension remove github/gh-copilot 2>/dev/null || true
+      ok "GitHub Copilot CLI extension removed"
+    else
+      info "Kept GitHub Copilot CLI extension"
+    fi
+  fi
+
+  # 9routerx CLI binary
+  local cli_bin="$HOME/.local/bin/9routerx"
+  if [[ -f "$cli_bin" ]]; then
+    rm -f "$cli_bin"
+    ok "Removed 9routerx CLI (${DIM}${cli_bin}${NC})"
+  fi
+
+  sep
+  printf "\n"
+  printf "  ${GREEN}${BOLD}✓ Uninstall complete${NC}\n"
+  printf "\n"
+  printf "      ${DIM}Reload your shell to apply changes: ${NC}${CYAN}source ~/.bashrc${NC}\n"
+  printf "\n"
+  sep
+  printf "\n"
+}
+
 # ── Summary for local installs ───────────────────────────────────────────────
 print_local_summary() {
   sep
-  printf "\n"
-  printf "  ${GREEN}${BOLD}✓ Installation complete${NC}\n"
-  printf "\n"
-  hdr "Quick start"
-  printf "      ${CYAN}9routerx${NC}             ${DIM}CLI for combos & models${NC}\n"
-  printf "      ${CYAN}9routerx models${NC}      ${DIM}List available models${NC}\n"
-  printf "      ${CYAN}9routerx combos${NC}      ${DIM}Manage virtual models${NC}\n"
-  printf "\n"
-  hdr "9router UI"
-
+  blank
+  printf "  ${GREEN}${BOLD}✓  Installation complete${NC}\n"
+  blank
+  hdr "Quick Start"
+  printf "      ${CYAN}9routerx${NC}                 ${DIM}interactive CLI${NC}\n"
+  printf "      ${CYAN}9routerx models${NC}          ${DIM}list available models${NC}\n"
+  printf "      ${CYAN}9routerx combos${NC}          ${DIM}manage virtual models${NC}\n"
+  printf "      ${CYAN}9routerx point-to --show${NC} ${DIM}check where tools are pointing${NC}\n"
+  blank
+  hdr "9router Dashboard"
   if [[ "$MODE" == "vps-headless" ]]; then
-    printf "      ${BOLD}http://YOUR_SERVER_IP:20128${NC}\n"
+    printf "      ${BOLD}${CYAN}http://YOUR_SERVER_IP:20128${NC}\n"
+    printf "      ${DIM}(replace with your actual server IP)${NC}\n"
   else
-    printf "      ${BOLD}http://127.0.0.1:20128${NC}\n"
-    printf "      ${DIM}Run '9router' in terminal to start${NC}\n"
+    printf "      ${BOLD}${CYAN}http://127.0.0.1:20128${NC}\n"
+    printf "      ${DIM}run ${NC}${WHITE}9router${NC}${DIM} in terminal to start${NC}\n"
   fi
-  printf "\n"
+  blank
   if [[ -f "${ROOT_DIR}/scripts/sync/9router_claude_sync.py" ]]; then
     hdr "Sync"
-    printf "      ${DIM}python3 \"${ROOT_DIR}/scripts/sync/9router_claude_sync.py\"${NC}\n"
-    printf "      ${DIM}\"${ROOT_DIR}/scripts/sync/install_sync_cron.sh\"${NC}\n"
+    printf "      ${DIM}python3 scripts/sync/9router_claude_sync.py${NC}\n"
+    printf "      ${DIM}bash scripts/sync/install_sync_cron.sh${NC}\n"
+    blank
   fi
-  printf "\n"
-  printf "  ${DIM}Mode: ${MODE}${NC}\n"
-  printf "\n"
   sep
-  printf "\n"
+  blank
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -1152,6 +1453,12 @@ main() {
   # Client setup — configure local tools to point at a remote 9router VPS
   if [[ "$MODE" == "client-setup" ]]; then
     client_setup "$NINE_ROUTER_HOST" "$NINE_ROUTER_PORT"
+    return
+  fi
+
+  # Uninstall / cleanup
+  if [[ "$MODE" == "uninstall" ]]; then
+    uninstall
     return
   fi
 
