@@ -43,17 +43,15 @@ trap 'rm -f "$tmp_cron"' EXIT
 existing_cron="$(crontab -l 2>/dev/null || true)"
 
 if printf '%s\n' "$existing_cron" | grep -qF "$SCRIPT_PATH"; then
-  # Replace existing entry
   printf '%s\n' "$existing_cron" | grep -vF "$SCRIPT_PATH" > "$tmp_cron" || true
-  echo "Updated existing cron entry for $SCRIPT_PATH"
+  printf "Updated cron entry\n"
 else
   printf '%s\n' "$existing_cron" > "$tmp_cron" || true
-  echo "Installing new cron entry for $SCRIPT_PATH"
+  printf "Installed cron entry\n"
 fi
 
 echo "$CRON_LINE" >> "$tmp_cron"
 crontab "$tmp_cron"
 
-echo ""
-echo "Active cron line:"
-echo "  $CRON_LINE"
+printf "Schedule: every minute\n"
+printf "Log:      %s\n" "$LOG_PATH"
