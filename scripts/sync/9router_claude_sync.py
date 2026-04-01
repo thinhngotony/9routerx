@@ -425,7 +425,7 @@ def sync_claude_code(router_base: str, use_combos: bool, verbose: bool) -> bool:
 
     # Auto-discover available models from 9router (combos first, then raw
     # provider models, then static fallback).
-    model_candidates = discover_model_candidates(router_base, api_key)
+    model_candidates = discover_model_candidates(router_base, api_key, use_combos=use_combos)
 
     # Log which combos were found on the server
     if verbose:
@@ -677,6 +677,7 @@ Examples:
             router_url=args.router_url,
             sync_cursor=args.sync_cursor,
             sync_shell=args.sync_shell,
+            use_combos=args.use_combos,
             shell_profiles=args.shell_profiles,
             verbose=verbose,
         )
@@ -686,6 +687,7 @@ Examples:
             router_url=args.router_url,
             sync_cursor=args.sync_cursor,
             sync_shell=args.sync_shell,
+            use_combos=args.use_combos,
             shell_profiles=args.shell_profiles,
             verbose=verbose,
         )
