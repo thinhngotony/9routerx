@@ -7,6 +7,14 @@ OS="$(uname -s)"
 MODE=""
 INSTALL_CURSOR="auto"
 SYNC_TO=""
+
+# uninstall flags defaults (safe, unset)
+UNINSTALL_LEVEL=""
+UNINSTALL_PURGE=""
+UNINSTALL_DRY_RUN=""
+UNINSTALL_ASSUME_YES=""
+UNINSTALL_INCLUDE_CLAUDE=""
+
 REMOTE_TARGET_HOST=""
 REMOTE_SSH_PORT=""
 SSH_CONTROL_PATH=""
@@ -123,20 +131,26 @@ EOF
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --mode)           MODE="${2:-}"; shift 2 ;;
-      --local-cursor)   MODE="local-cursor"; shift ;;
-      --vps-headless)   MODE="vps-headless"; shift ;;
-      --sync-to)        SYNC_TO="${2:-}"; shift 2 ;;
-      --ssh-port)       REMOTE_SSH_PORT="${2:-}"; shift 2 ;;
-      --client-setup)   MODE="client-setup"; shift ;;
-      --vps-host)       NINE_ROUTER_HOST="${2:-}"; shift 2 ;;
-      --router-port)    NINE_ROUTER_PORT="${2:-20128}"; shift 2 ;;
+      --mode)                 MODE="${2:-}"; shift 2 ;;
+      --local-cursor)         MODE="local-cursor"; shift ;;
+      --vps-headless)         MODE="vps-headless"; shift ;;
+      --sync-to)              SYNC_TO="${2:-}"; shift 2 ;;
+      --ssh-port)             REMOTE_SSH_PORT="${2:-}"; shift 2 ;;
+      --client-setup)         MODE="client-setup"; shift ;;
+      --vps-host)             NINE_ROUTER_HOST="${2:-}"; shift 2 ;;
+      --router-port)          NINE_ROUTER_PORT="${2:-20128}"; shift 2 ;;
+      --uninstall)            MODE="uninstall"; shift ;;
+      --level)                UNINSTALL_LEVEL="${2:-}"; shift 2 ;;
+      --purge)                UNINSTALL_PURGE=1; shift ;;
+      --dry-run)              UNINSTALL_DRY_RUN=1; shift ;;
+      --yes)                  UNINSTALL_ASSUME_YES=1; shift ;;
+      --include-claude)       UNINSTALL_INCLUDE_CLAUDE=1; shift ;;
       # Back-compat / hidden options:
-      --remote-vps)     MODE="remote-vps"; shift ;;
-      --install-cursor) INSTALL_CURSOR="yes"; shift ;;
-      --skip-cursor-install) INSTALL_CURSOR="no"; shift ;;
-      -h|--help)        usage; exit 0 ;;
-      *)                err "Unknown option: $1"; usage; exit 1 ;;
+      --remote-vps)           MODE="remote-vps"; shift ;;
+      --install-cursor)       INSTALL_CURSOR="yes"; shift ;;
+      --skip-cursor-install)  INSTALL_CURSOR="no"; shift ;;
+      -h|--help)              usage; exit 0 ;;
+      *)                      err "Unknown option: $1"; usage; exit 1 ;;
     esac
   done
 }
@@ -1156,9 +1170,12 @@ PY
 
 # ── Uninstall / cleanup ───────────────────────────────────────────────────────
 uninstall() {
+  # Allow non-interactive operation when flags are provided (--level/--dry-run/--yes)
   if ! tty_available; then
-    err "Uninstall requires a TTY for interactive prompts."
-    exit 1
+    if [[ -z "$UNINSTALL_LEVEL" && -z "$UNINSTALL_DRY_RUN" ]]; then
+      err "Uninstall requires a TTY for interactive prompts. Re-run with --uninstall --level <project|system|global> --yes for non-interactive mode or run in a TTY."
+      exit 1
+    fi
   fi
 
   sep
@@ -1166,18 +1183,29 @@ uninstall() {
   printf "      ${DIM}Select what to clean up. Press Enter to accept defaults.${NC}\n\n"
 
   # ── Scope selection ──────────────────────────────────────────────────────────
-  printf "      ${BOLD}What to remove:${NC}\n\n"
-  printf "         ${CYAN}1${NC}  Revert configs only         ${DIM}(Claude Code, Cursor, shell — keep tools)${NC}\n"
-  printf "         ${CYAN}2${NC}  Stop 9router + remove data  ${DIM}(systemd service, ~/.9router/, cron job)${NC}\n"
-  printf "         ${CYAN}3${NC}  ${BOLD}Full cleanup${NC}                 ${DIM}(everything above + uninstall tools)${NC}\n"
-  printf "\n"
-
   local scope
-  scope="$(tty_read "      Choice [1-3]" "1")"
-  case "${scope:-1}" in
-    1|2|3) ;;
-    *) err "Invalid choice: ${scope}"; exit 1 ;;
-  esac
+  if [[ -n "$UNINSTALL_LEVEL" ]]; then
+    case "$UNINSTALL_LEVEL" in
+      project) scope=1 ;;
+      user)    scope=2 ;;
+      system)  scope=3 ;;
+      # Backwards-compatible name
+      global)  scope=3 ;;
+      *) err "Invalid uninstall level: $UNINSTALL_LEVEL"; exit 1 ;;
+    esac
+  else
+    printf "      ${BOLD}What to remove:${NC}\n\n"
+    printf "         ${CYAN}1${NC}  Revert configs only         ${DIM}(Claude Code, Cursor, shell — keep tools)${NC}\n"
+    printf "         ${CYAN}2${NC}  Stop 9router + remove data  ${DIM}(systemd service, ~/.9router/, cron job)${NC}\n"
+    printf "         ${CYAN}3${NC}  ${BOLD}Full cleanup${NC}                 ${DIM}(everything above + uninstall tools)${NC}\n"
+    printf "\n"
+
+    scope="$(tty_read "      Choice [1-3]" "1")"
+    case "${scope:-1}" in
+      1|2|3) ;;
+      *) err "Invalid choice: ${scope}"; exit 1 ;;
+    esac
+  fi
 
   # ── Confirm ──────────────────────────────────────────────────────────────────
   printf "\n"
@@ -1191,11 +1219,21 @@ uninstall() {
   [[ "$scope" -ge 3 ]] && printf "         ${YELLOW}•${NC}  Uninstall: 9router, claude, antigravity-ide, gh copilot extension, 9routerx CLI\n"
   printf "\n"
 
-  local confirm
-  confirm="$(tty_read "      Proceed? (y/N)" "N")"
-  if ! [[ "$confirm" =~ ^[Yy]$ ]]; then
-    info "Aborted — no changes made."
-    return 0
+  if [[ -n "$UNINSTALL_DRY_RUN" ]]; then
+    info "Dry run: no changes will be made."
+  elif [[ -n "$UNINSTALL_ASSUME_YES" ]]; then
+    info "Proceeding without interactive confirmation (--yes supplied)."
+  else
+    if ! tty_available; then
+      err "Non-interactive uninstall requires --yes to proceed."
+      exit 1
+    fi
+    local confirm
+    confirm="$(tty_read "      Proceed? (y/N)" "N")"
+    if ! [[ "$confirm" =~ ^[Yy]$ ]]; then
+      info "Aborted — no changes made."
+      return 0
+    fi
   fi
 
   # ── Scope 1: revert configs ───────────────────────────────────────────────────
@@ -1342,13 +1380,20 @@ PY
 
   # Remove ~/.9router directory
   if [[ -d "$HOME/.9router" ]]; then
-    local del_confirm
-    del_confirm="$(tty_read "      Delete ${HOME}/.9router/ (database + logs)? (y/N)" "N")"
-    if [[ "$del_confirm" =~ ^[Yy]$ ]]; then
+    if [[ -n "$UNINSTALL_DRY_RUN" ]]; then
+      info "Would remove $HOME/.9router/ (dry run)"
+    elif [[ -n "$UNINSTALL_PURGE" || -n "$UNINSTALL_ASSUME_YES" ]]; then
       rm -rf "$HOME/.9router"
       ok "Removed ~/.9router/"
     else
-      info "Kept ~/.9router/ — delete manually if needed"
+      local del_confirm
+      del_confirm="$(tty_read "      Delete ${HOME}/.9router/ (database + logs)? (y/N)" "N")"
+      if [[ "$del_confirm" =~ ^[Yy]$ ]]; then
+        rm -rf "$HOME/.9router"
+        ok "Removed ~/.9router/"
+      else
+        info "Kept ~/.9router/ — delete manually if needed"
+      fi
     fi
   else
     info "$HOME/.9router/ not found"
@@ -1362,23 +1407,42 @@ PY
 
   # 9router npm package
   if has_cmd npm && npm list -g 9router --depth=0 >/dev/null 2>&1; then
-    info "Removing 9router npm package"
-    npm_global_install() { :; }  # shadow to avoid reinstall side-effects
-    if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
-      npm uninstall -g 9router 2>/dev/null || true
+    if [[ -n "$UNINSTALL_DRY_RUN" ]]; then
+      info "Would remove 9router npm package (dry run)"
+    elif [[ -n "$UNINSTALL_ASSUME_YES" ]]; then
+      info "Removing 9router npm package"
+      npm_global_install() { :; }  # shadow to avoid reinstall side-effects
+      if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
+        npm uninstall -g 9router 2>/dev/null || true
+      else
+        sudo npm uninstall -g 9router 2>/dev/null || true
+      fi
+      ok "9router uninstalled"
     else
-      sudo npm uninstall -g 9router 2>/dev/null || true
+      local rem_9router
+      rem_9router="$(tty_read "      Uninstall 9router npm package? (y/N)" "N")"
+      if [[ "$rem_9router" =~ ^[Yy]$ ]]; then
+        npm_global_install() { :; }
+        if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
+          npm uninstall -g 9router 2>/dev/null || true
+        else
+          sudo npm uninstall -g 9router 2>/dev/null || true
+        fi
+        ok "9router uninstalled"
+      else
+        info "Kept 9router npm package"
+      fi
     fi
-    ok "9router uninstalled"
   else
     info "9router npm package not found"
   fi
 
   # Claude Code
   if has_cmd claude && npm list -g @anthropic-ai/claude-code --depth=0 >/dev/null 2>&1; then
-    local rem_claude
-    rem_claude="$(tty_read "      Uninstall Claude Code CLI? (y/N)" "N")"
-    if [[ "$rem_claude" =~ ^[Yy]$ ]]; then
+    if [[ -n "$UNINSTALL_DRY_RUN" ]]; then
+      info "Would uninstall Claude Code CLI (dry run)."
+    elif [[ -n "$UNINSTALL_INCLUDE_CLAUDE" ]]; then
+      info "Uninstalling Claude Code CLI as requested"
       if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
         npm uninstall -g @anthropic-ai/claude-code 2>/dev/null || true
       else
@@ -1386,15 +1450,16 @@ PY
       fi
       ok "Claude Code CLI uninstalled"
     else
-      info "Kept Claude Code CLI"
+      info "Keeping Claude Code CLI (not requested to remove)"
     fi
   fi
 
   # antigravity-ide
   if has_cmd antigravity-ide || npm list -g antigravity-ide --depth=0 >/dev/null 2>&1; then
-    local rem_ag
-    rem_ag="$(tty_read "      Uninstall antigravity-ide? (y/N)" "N")"
-    if [[ "$rem_ag" =~ ^[Yy]$ ]]; then
+    if [[ -n "$UNINSTALL_DRY_RUN" ]]; then
+      info "Would uninstall antigravity-ide (dry run)."
+    elif [[ -n "$UNINSTALL_ASSUME_YES" ]]; then
+      info "Uninstalling antigravity-ide"
       if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
         npm uninstall -g antigravity-ide 2>/dev/null || true
       else
@@ -1402,7 +1467,18 @@ PY
       fi
       ok "antigravity-ide uninstalled"
     else
-      info "Kept antigravity-ide"
+      local rem_ag
+      rem_ag="$(tty_read "      Uninstall antigravity-ide? (y/N)" "N")"
+      if [[ "$rem_ag" =~ ^[Yy]$ ]]; then
+        if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
+          npm uninstall -g antigravity-ide 2>/dev/null || true
+        else
+          sudo npm uninstall -g antigravity-ide 2>/dev/null || true
+        fi
+        ok "antigravity-ide uninstalled"
+      else
+        info "Kept antigravity-ide"
+      fi
     fi
   fi
 
