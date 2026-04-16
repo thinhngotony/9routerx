@@ -330,7 +330,16 @@ install_or_update_npm_pkg() {
 }
 
 install_claude_code() {
-  install_or_update_npm_pkg claude "@anthropic-ai/claude-code"
+  if has_cmd claude; then
+    info "Claude Code found: $(claude --version 2>/dev/null || echo 'unknown')"
+    info "Updating Claude Code..."
+    claude update
+    ok "Claude Code updated"
+  else
+    info "Installing Claude Code (native installer)"
+    curl -fsSL https://claude.ai/install.sh | bash
+    ok "Claude Code installed"
+  fi
 }
 
 install_antigravity() {
@@ -1437,17 +1446,14 @@ PY
     info "9router npm package not found"
   fi
 
-  # Claude Code
-  if has_cmd claude && npm list -g @anthropic-ai/claude-code --depth=0 >/dev/null 2>&1; then
+  # Claude Code (native binary)
+  if has_cmd claude; then
     if [[ -n "$UNINSTALL_DRY_RUN" ]]; then
       info "Would uninstall Claude Code CLI (dry run)."
     elif [[ -n "$UNINSTALL_INCLUDE_CLAUDE" ]]; then
-      info "Uninstalling Claude Code CLI as requested"
-      if [[ "$(id -u)" -eq 0 ]] || [[ "$OS" == "Darwin" ]]; then
-        npm uninstall -g @anthropic-ai/claude-code 2>/dev/null || true
-      else
-        sudo npm uninstall -g @anthropic-ai/claude-code 2>/dev/null || true
-      fi
+      info "Uninstalling Claude Code CLI (native binary)"
+      rm -f ~/.local/bin/claude
+      rm -rf ~/.local/share/claude
       ok "Claude Code CLI uninstalled"
     else
       info "Keeping Claude Code CLI (not requested to remove)"
