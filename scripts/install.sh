@@ -18,8 +18,6 @@ UNINSTALL_INCLUDE_CLAUDE=""
 REMOTE_TARGET_HOST=""
 REMOTE_SSH_PORT=""
 SSH_CONTROL_PATH=""
-NINE_ROUTER_HOST=""    # VPS host for client-setup mode (HTTP, no user@ prefix)
-NINE_ROUTER_PORT="20128"
 
 # Isolate npm cache to avoid permission issues from previous installs
 # (e.g. root-owned directories under ~/.npm/_cacache).
@@ -115,14 +113,11 @@ usage() {
 Usage: $0 [options]
 
 Options:
-  --mode <local-cursor|vps-headless|client-setup>
+  --mode <local-cursor|vps-headless>
   --local-cursor              Install on this machine (with Cursor IDE)
   --vps-headless              Install on this machine (headless server)
   --sync-to <user@host>       Sync Cursor tokens from this machine to remote VPS
   --ssh-port <port>           SSH port for --sync-to (default: 22)
-  --client-setup              Configure local tools to use a remote 9router VPS
-  --vps-host <host|ip>        VPS host or IP for --client-setup
-  --router-port <port>        9router HTTP port for --client-setup (default: 20128)
   -h, --help                  Show this help message
 EOF
 }
@@ -136,9 +131,6 @@ parse_args() {
       --vps-headless)         MODE="vps-headless"; shift ;;
       --sync-to)              SYNC_TO="${2:-}"; shift 2 ;;
       --ssh-port)             REMOTE_SSH_PORT="${2:-}"; shift 2 ;;
-      --client-setup)         MODE="client-setup"; shift ;;
-      --vps-host)             NINE_ROUTER_HOST="${2:-}"; shift 2 ;;
-      --router-port)          NINE_ROUTER_PORT="${2:-20128}"; shift 2 ;;
       --uninstall)            MODE="uninstall"; shift ;;
       --level)                UNINSTALL_LEVEL="${2:-}"; shift 2 ;;
       --purge)                UNINSTALL_PURGE=1; shift ;;
@@ -189,9 +181,6 @@ choose_mode_if_needed() {
       MODE="remote-vps"
       ;;
     3)
-      MODE="client-setup"
-      ;;
-    4)
       MODE="uninstall"
       ;;
     *)
@@ -211,7 +200,7 @@ resolve_mode() {
   fi
 
   case "$MODE" in
-    local-cursor|vps-headless|remote-vps|client-setup|uninstall) ;;
+    local-cursor|vps-headless|remote-vps|uninstall) ;;
     *) err "Invalid mode: $MODE"; usage; exit 1 ;;
   esac
 }
@@ -895,15 +884,6 @@ REMOTE
     fi
   fi
 
-  # ── Offer to configure local machine ─────────────────────────────────────────
-  if tty_available; then
-    printf "\n"
-    local local_confirm
-    local_confirm="$(tty_read "      Also configure THIS machine to use ${TARGET_HOST#*@} as AI gateway? (y/N)" "N")"
-    if [[ "$local_confirm" =~ ^[Yy]$ ]]; then
-      client_setup "${TARGET_HOST#*@}" "20128"
-    fi
-  fi
 
   # ── Summary ────────────────────────────────────────────────────────────────
   local VPS_IP="${TARGET_HOST#*@}"
@@ -915,263 +895,6 @@ REMOTE
   printf "      ${CYAN}1.${NC} Open 9router UI: ${BOLD}http://${VPS_IP}:20128${NC}\n"
   printf "      ${CYAN}2.${NC} Cursor provider was auto-registered from synced tokens\n"
   printf "      ${CYAN}3.${NC} Add more providers if needed (Copilot, Antigravity, etc.)\n"
-  printf "\n"
-  sep
-  printf "\n"
-}
-
-# ── Client setup (point local tools at a remote 9router VPS) ─────────────────
-find_sync_script() {
-  local candidates=(
-    "${ROOT_DIR}/scripts/sync/9router_claude_sync.py"
-    "$HOME/.9routerx/scripts/sync/9router_claude_sync.py"
-  )
-  local f
-  for f in "${candidates[@]}"; do
-    [[ -f "$f" ]] && printf "%s" "$f" && return
-  done
-}
-
-client_setup() {
-  local vps_host="${1:-}"
-  local vps_port="${2:-20128}"
-
-  if ! tty_available; then
-    err "client-setup requires a TTY for interactive prompts."
-    exit 1
-  fi
-
-  sep
-  hdr "Client Setup"
-  printf "      ${DIM}Point local AI tools (Claude Code, Cursor, shell) at a remote 9router VPS${NC}\n"
-
-  # ── Get VPS host ─────────────────────────────────────────────────────────────
-  printf "\n"
-  if [[ -z "$vps_host" ]]; then
-    vps_host="$(tty_read "      VPS host or IP" "")"
-  else
-    printf "      ${DIM}VPS host:${NC} %s\n" "$vps_host"
-  fi
-  if [[ -z "${vps_host:-}" ]]; then
-    err "VPS host is required"
-    exit 1
-  fi
-  # Strip protocol or user@ prefix if accidentally included
-  vps_host="${vps_host#*@}"
-  vps_host="${vps_host#http://}"
-  vps_host="${vps_host#https://}"
-  vps_host="${vps_host%%/*}"  # drop any path
-
-  local router_url="http://${vps_host}:${vps_port}"
-
-  # ── Connectivity check ───────────────────────────────────────────────────────
-  printf "\n"
-  info "Probing 9router at ${BOLD}${router_url}${NC}"
-  local http_code
-  http_code="$(curl -sf -m 5 -o /dev/null -w '%{http_code}' "${router_url}/api/providers" 2>/dev/null || echo "000")"
-  if [[ "$http_code" =~ ^(200|401|403)$ ]]; then
-    ok "9router is reachable"
-  else
-    wrn "9router not reachable (HTTP ${http_code}) — make sure it's running. Proceeding anyway."
-  fi
-
-  # ── Resolve effective URL (use tunnel if active) ─────────────────────────────
-  local effective_url="$router_url"
-  local tunnel_url
-  tunnel_url="$(python3 - <<PY 2>/dev/null || echo ""
-import json, urllib.request
-try:
-    with urllib.request.urlopen("${router_url}/api/settings", timeout=5) as r:
-        d = json.load(r)
-    url = d.get("tunnelUrl", "").strip().rstrip("/")
-    if d.get("tunnelEnabled") and url:
-        print(url)
-except Exception:
-    pass
-PY
-)"
-  if [[ -n "$tunnel_url" ]]; then
-    ok "Active Cloudflare Tunnel detected"
-    printf "         ${DIM}%s${NC}\n" "$tunnel_url"
-    effective_url="$tunnel_url"
-    printf "         ${DIM}(cron sync will auto-update if tunnel URL changes)${NC}\n"
-  else
-    info "No active tunnel — using direct IP: ${effective_url}"
-  fi
-
-  # ── Target selection ─────────────────────────────────────────────────────────
-  sep
-  hdr "Target Selection"
-  printf "      ${DIM}Which tools should point to${NC} ${CYAN}%s${NC}${DIM}?${NC}\n\n" "$effective_url"
-  printf "         ${CYAN}1${NC}  Claude Code   ${DIM}(~/.claude/settings.json)${NC}\n"
-  printf "         ${CYAN}2${NC}  Shell profile ${DIM}(~/.bashrc, ~/.zshrc)${NC}\n"
-  printf "         ${CYAN}3${NC}  Cursor        ${DIM}(settings.json)${NC}\n"
-  printf "         ${CYAN}4${NC}  ${BOLD}All of the above${NC} ${DIM}(recommended)${NC}\n"
-  printf "\n"
-
-  local target_choice
-  target_choice="$(tty_read "      Choice" "4")"
-
-  local sync_flags="--router-url ${router_url}"
-  case "${target_choice:-4}" in
-    1) ;;
-    2) sync_flags="$sync_flags --sync-shell" ;;
-    3) sync_flags="$sync_flags --sync-cursor" ;;
-    4) sync_flags="$sync_flags --sync-cursor --sync-shell" ;;
-    *) err "Invalid choice: ${target_choice}"; exit 1 ;;
-  esac
-
-  # ── Combo defaults (opt-in) ───────────────────────────────────────────────────
-  # Only relevant when syncing Claude Code (choice 1 or 4). We ask before
-  # changing model defaults to combo names from the server.
-  local use_combos_flag=""
-  if [[ "${target_choice:-4}" == "1" || "${target_choice:-4}" == "4" ]]; then
-    local combo_confirm
-    combo_confirm="$(tty_read "      Use server combos for Claude default models? (y/N)" "N")"
-    if [[ "$combo_confirm" =~ ^[Yy]$ ]]; then
-      use_combos_flag="--use-combos"
-      ok "Combos enabled — Claude defaults may switch to server combo names"
-    else
-      info "Combos not enabled — keeping legacy/default model selection"
-    fi
-  fi
-
-  # Append after selection so it flows into both one-shot sync and cron
-  sync_flags="$sync_flags ${use_combos_flag}"
-
-  # ── Locate sync script ───────────────────────────────────────────────────────
-  local sync_script
-  sync_script="$(find_sync_script)"
-  if [[ -z "${sync_script:-}" ]]; then
-    err "9router_claude_sync.py not found. Run the installer first."
-    exit 1
-  fi
-
-  # ── Ensure ANTHROPIC_AUTH_TOKEN exists ────────────────────────────────────────
-  sep
-  hdr "Authentication"
-  local claude_settings="$HOME/.claude/settings.json"
-  local existing_token=""
-  if [[ -f "$claude_settings" ]]; then
-    existing_token="$(python3 - <<PY 2>/dev/null || echo ""
-import json
-with open("${claude_settings}") as f:
-    d = json.load(f)
-print(d.get("env", {}).get("ANTHROPIC_AUTH_TOKEN", ""))
-PY
-)"
-  fi
-
-  if [[ -z "${existing_token:-}" ]]; then
-    info "Generating secure API key from ${vps_host}..."
-
-    # Try to generate a real API key via SSH
-    local api_key=""
-    local _remote_script
-    _remote_script="$(mktemp /tmp/9rx-genkey-XXXXXX.sh)"
-    cat > "$_remote_script" <<'GENKEY'
-set -euo pipefail
-ROUTER_BASE="http://127.0.0.1:20128"
-KEY_RESP=$(curl -sf -X POST "${ROUTER_BASE}/api/keys" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"client-setup-$(date +%s)\",\"scopes\":[\"read\",\"write\"]}" 2>&1 || echo "")
-printf '%s' "$KEY_RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('key',''))" 2>/dev/null || true
-curl -sf -X PATCH "${ROUTER_BASE}/api/settings" -H "Content-Type: application/json" -d '{"requireLogin":true}' >/dev/null 2>&1 || true
-GENKEY
-    if api_key=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$vps_host" bash < "$_remote_script" 2>/dev/null); then
-      api_key="${api_key// /}"  # strip whitespace
-    fi
-    rm -f "$_remote_script"
-
-    if [[ -n "${api_key:-}" ]] && [[ "$api_key" != "ERROR"* ]]; then
-      ok "Generated key: ${BOLD}${api_key:0:12}...${NC}"
-      ok "Enabled ${BOLD}requireLogin${NC} on 9router (only valid keys accepted)"
-    else
-      wrn "Could not generate key via SSH — using temporary token"
-      printf "         ${DIM}Run this later: ssh %s 'curl -X POST http://127.0.0.1:20128/api/keys'${NC}\n" "$vps_host"
-      api_key="9router-INSECURE-$(date +%s)"
-    fi
-
-    # Write the token
-    python3 - <<PY
-import json, os
-path = "${claude_settings}"
-if os.path.exists(path):
-    with open(path) as f:
-        d = json.load(f)
-else:
-    d = {}
-d.setdefault("env", {})["ANTHROPIC_AUTH_TOKEN"] = "${api_key}"
-os.makedirs(os.path.dirname(path), exist_ok=True)
-tmp = path + ".tmp"
-with open(tmp, "w") as f:
-    json.dump(d, f, indent=2)
-    f.write("\n")
-os.replace(tmp, path)
-PY
-    ok "Saved to ${BOLD}~/.claude/settings.json${NC}"
-  else
-    ok "Using existing token: ${BOLD}${existing_token:0:12}...${NC}"
-  fi
-
-  # ── Apply config ─────────────────────────────────────────────────────────────
-  sep
-  hdr "Applying Configuration"
-  # shellcheck disable=SC2086
-  python3 "$sync_script" $sync_flags 2>&1 | indent "         "
-
-  # ── Install / update cron ────────────────────────────────────────────────────
-  sep
-  hdr "Auto-sync Setup"
-  local cron_confirm
-  cron_confirm="$(tty_read "      Enable automatic sync (cron, every minute)? (Y/n)" "Y")"
-  if [[ "${cron_confirm:-Y}" =~ ^[Yy]$ ]]; then
-    local cron_sh="${ROOT_DIR}/scripts/sync/install_sync_cron.sh"
-    if [[ ! -f "$cron_sh" ]]; then
-      cron_sh="$HOME/.9routerx/scripts/sync/install_sync_cron.sh"
-    fi
-    if [[ -f "$cron_sh" ]]; then
-      local log_path="$HOME/.9router/claude-sync.log"
-      # shellcheck disable=SC2086
-      bash "$cron_sh" "$sync_script" "$log_path" $sync_flags 2>&1 | indent "         "
-      ok "Auto-sync enabled — updates every minute"
-    else
-      wrn "install_sync_cron.sh not found — install cron manually"
-    fi
-  else
-    info "Auto-sync skipped — run manually: ${BOLD}python3 ${sync_script} ${sync_flags}${NC}"
-  fi
-
-  # ── Summary ──────────────────────────────────────────────────────────────────
-  sep
-  printf "\n"
-  printf "  ${GREEN}${BOLD}✓ Setup Complete${NC}\n"
-  printf "\n"
-  hdr "Verify"
-  printf "         ${CYAN}claude config list${NC}\n"
-  printf "         ${DIM}→ Check ANTHROPIC_BASE_URL${NC}\n"
-  printf "\n"
-  local shell_profile=""
-  if [[ -f "$HOME/.zshrc" ]]; then
-    shell_profile="$HOME/.zshrc"
-  elif [[ -f "$HOME/.bashrc" ]]; then
-    shell_profile="$HOME/.bashrc"
-  elif [[ -f "$HOME/.bash_profile" ]]; then
-    shell_profile="$HOME/.bash_profile"
-  elif [[ -f "$HOME/.profile" ]]; then
-    shell_profile="$HOME/.profile"
-  fi
-
-  if [[ -n "$shell_profile" ]]; then
-    printf "         ${CYAN}source %s && echo \$ANTHROPIC_BASE_URL${NC}\n" "$shell_profile"
-  else
-    printf "         ${CYAN}echo \$ANTHROPIC_BASE_URL${NC}\n"
-  fi
-  printf "         ${DIM}→ Verify shell environment${NC}\n"
-  printf "\n"
-  hdr "Re-run Setup"
-  printf "         ${DIM}./scripts/install.sh --client-setup --vps-host %s${NC}\n" "$vps_host"
-  printf "         ${DIM}9routerx point-to %s${NC}\n" "$router_url"
   printf "\n"
   sep
   printf "\n"
@@ -1527,7 +1250,6 @@ print_local_summary() {
   printf "      ${CYAN}9routerx${NC}                 ${DIM}interactive CLI${NC}\n"
   printf "      ${CYAN}9routerx models${NC}          ${DIM}list available models${NC}\n"
   printf "      ${CYAN}9routerx combos${NC}          ${DIM}manage virtual models${NC}\n"
-  printf "      ${CYAN}9routerx point-to --show${NC} ${DIM}check where tools are pointing${NC}\n"
   blank
   hdr "9router Dashboard"
   if [[ "$MODE" == "vps-headless" ]]; then
@@ -1538,13 +1260,6 @@ print_local_summary() {
     printf "      ${DIM}run ${NC}${WHITE}9router${NC}${DIM} in terminal to start${NC}\n"
   fi
   blank
-  if [[ -f "${ROOT_DIR}/scripts/sync/9router_claude_sync.py" ]]; then
-    hdr "Sync"
-    printf "      ${DIM}python3 scripts/sync/9router_claude_sync.py${NC}\n"
-    printf "      ${DIM}bash scripts/sync/install_sync_cron.sh${NC}\n"
-    blank
-  fi
-  sep
   blank
 }
 
@@ -1567,13 +1282,6 @@ main() {
     return
   fi
 
-  # Client setup — configure local tools to point at a remote 9router VPS
-  if [[ "$MODE" == "client-setup" ]]; then
-    client_setup "$NINE_ROUTER_HOST" "$NINE_ROUTER_PORT"
-    return
-  fi
-
-  # Uninstall / cleanup
   if [[ "$MODE" == "uninstall" ]]; then
     uninstall
     return

@@ -61,7 +61,6 @@ chmod +x scripts/install.sh
 | **Self-healing** | Post-install doctor verifies every component; `--fix` remediates issues automatically |
 | **Token sync** | Extracts Cursor auth tokens from your local machine and injects them into a remote VPS over SSH |
 | **Virtual models** | Combine multiple providers into a single model name with fallback or round-robin routing |
-| **Auto-sync** | Cron job keeps `ANTHROPIC_BASE_URL` and model aliases aligned with live 9router state |
 | **Remote verify** | After every VPS install, installer SSHes back, runs health checks, and offers to fix issues |
 
 ---
@@ -188,20 +187,6 @@ claude config set model opus-4-6
 
 ---
 
-## Token Sync (Cron)
-
-Keep `ANTHROPIC_BASE_URL` and model aliases aligned with live 9router state automatically:
-
-```bash
-# Run once manually
-python3 scripts/sync/9router_claude_sync.py
-
-# Install as a cron job (runs every minute, updates only when state changes)
-./scripts/sync/install_sync_cron.sh \
-  "$(pwd)/scripts/sync/9router_claude_sync.py" \
-  "$HOME/.9router/claude-sync.log"
-```
-
 ---
 
 ## Cloudflare Worker (Vanity URLs)
@@ -212,8 +197,6 @@ This repo ships a Cloudflare Worker that exposes clean install URLs:
 | --- | --- |
 | `https://9routerx.hyberorbit.com/install` | Universal installer |
 | `https://9routerx.hyberorbit.com/install.sh` | Installer (explicit `.sh`) |
-| `https://9routerx.hyberorbit.com/sync.py` | Sync script |
-| `https://9routerx.hyberorbit.com/sync-cron.sh` | Cron installer |
 
 **Deploy:**
 
@@ -249,10 +232,7 @@ Release notes are extracted from `CHANGELOG.md` automatically.
 │   ├── install.sh                # Core installer (local-cursor, vps-headless, remote-vps modes)
 │   ├── doctor.sh                 # Health checker and auto-remediator
 │   ├── 9routerx                  # CLI for combo / model management
-│   ├── combo.py                  # Combo builder (create, list, delete via 9router API)
-│   └── sync/
-│       ├── 9router_claude_sync.py    # Syncs ANTHROPIC_BASE_URL and model aliases
-│       └── install_sync_cron.sh     # Installs the sync cron job
+│   └── combo.py                  # Combo builder (create, list, delete via 9router API)
 ├── worker.js                     # Cloudflare Worker for vanity install URLs
 └── wrangler.toml                 # Cloudflare Worker config
 ```
@@ -440,7 +420,6 @@ Then add the returned key to `~/.claude/settings.json`:
 - Installer is idempotent — safe to re-run at any time.
 - `copilot` CLI requires user auth after install: `copilot auth login`
 - `9router` requires provider login in its own UI flow at `http://YOUR_IP:20128`
-- Cron sync runs every minute and updates only when 9router state has changed.
 - Always prefer `http://127.0.0.1:20128` over `http://localhost:20128` to avoid IPv6 resolution issues.
 
 ---

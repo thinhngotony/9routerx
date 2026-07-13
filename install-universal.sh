@@ -85,8 +85,6 @@ safe_download "${BASE_URL}/scripts/9routerx"                      "${INSTALL_HOM
 safe_download "${BASE_URL}/scripts/combo.py"                      "${INSTALL_HOME}/scripts/combo.py"                      "combo.py"                      || FAIL=1
 safe_download "${BASE_URL}/scripts/doctor.sh"                     "${INSTALL_HOME}/scripts/doctor.sh"                     "doctor.sh"                     || true
 safe_download "${BASE_URL}/scripts/bootstrap-vps.sh"              "${INSTALL_HOME}/scripts/bootstrap-vps.sh"              "bootstrap-vps.sh"              || true
-safe_download "${BASE_URL}/scripts/sync/9router_claude_sync.py"   "${INSTALL_HOME}/scripts/sync/9router_claude_sync.py"   "9router_claude_sync.py"        || FAIL=1
-safe_download "${BASE_URL}/scripts/sync/install_sync_cron.sh"     "${INSTALL_HOME}/scripts/sync/install_sync_cron.sh"     "install_sync_cron.sh"          || true
 
 if [ "$FAIL" -eq 1 ]; then
   printf "\n"
@@ -100,8 +98,6 @@ fi
 chmod +x \
   "${INSTALL_HOME}/scripts/install.sh" \
   "${INSTALL_HOME}/scripts/9routerx" \
-  "${INSTALL_HOME}/scripts/sync/9router_claude_sync.py" \
-  "${INSTALL_HOME}/scripts/sync/install_sync_cron.sh" \
   2>/dev/null || true
 
 [ -f "${INSTALL_HOME}/scripts/doctor.sh" ]        && chmod +x "${INSTALL_HOME}/scripts/doctor.sh"

@@ -29,7 +29,6 @@ jobs:
           shellcheck -s bash scripts/install.sh
           shellcheck -s bash scripts/doctor.sh
           shellcheck -s bash scripts/bootstrap-vps.sh
-          shellcheck -s bash scripts/sync/install_sync_cron.sh
 
   syntax-check:
     name: Syntax Check
@@ -46,11 +45,9 @@ jobs:
           bash -n scripts/install.sh
           bash -n scripts/doctor.sh
           bash -n scripts/bootstrap-vps.sh
-          bash -n scripts/sync/install_sync_cron.sh
 
       - name: Check Python syntax
         run: |
-          python3 -m py_compile scripts/sync/9router_claude_sync.py
           python3 -m py_compile scripts/combo.py
 
       - name: Check Worker syntax
@@ -62,17 +59,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validate sync script flags
-        run: |
-          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--watch"
-          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--interval"
-          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--quiet"
-
-      - name: Validate cron installer idempotence
-        run: |
-          grep -q '*/1 \* \* \* \*' scripts/sync/install_sync_cron.sh
-          grep -q 'Updated cron entry\|Installed cron entry' scripts/sync/install_sync_cron.sh
 
       - name: Validate installer includes required tools
         run: |
@@ -98,8 +84,6 @@ jobs:
         run: |
           grep -q '/install' worker.js
           grep -q '/bootstrap' worker.js
-          grep -q '/sync.py' worker.js
-          grep -q '/sync-cron.sh' worker.js
 
   release:
     name: Create Release
@@ -153,8 +137,6 @@ jobs:
             - Remote VPS install via SSH with Cursor token sync
             - Auto-update: always upgrades to latest versions of 9router, Claude Code, Copilot CLI, Antigravity
             - Idempotent installs for Claude Code, Antigravity, Copilot CLI, Cursor, and 9router
-            - Tunnel + model auto-sync for Claude settings
-            - Cron-based self-healing sync
             - npm permission fix (EACCES/EEXIST prevention)
             - Cloudflare Worker endpoints for stable install URLs
 

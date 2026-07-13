@@ -54,19 +54,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 python3 scripts/combo.py create --name opus-4-6 --models cc/claude-opus-4-6,gh/claude-opus-4.5 --strategy fallback --validate
 ```
 
-### Token Sync
-```bash
-# Run sync manually
-python3 scripts/sync/9router_claude_sync.py
-
-# Install sync cron job
-./scripts/sync/install_sync_cron.sh "$(pwd)/scripts/sync/9router_claude_sync.py" "$HOME/.9router/claude-sync.log"
-
-# Point clients to a router URL
-9routerx point-to http://YOUR_VPS_IP:20128
-9routerx point-to http://YOUR_VPS_IP:20128 --only claude  # specific target
-```
-
 ### Cloudflare Worker
 ```bash
 # Deploy worker
@@ -98,8 +85,6 @@ python3 -m py_compile scripts/combo.py
    - `/install` → `install-universal.sh`
    - `/install.sh` → `scripts/install.sh`
    - `/bootstrap` → `scripts/bootstrap-vps.sh`
-   - `/sync.py` → `scripts/sync/9router_claude_sync.py`
-   - `/sync-cron.sh` → `scripts/sync/install_sync_cron.sh`
 
 2. **Universal Installer** (`install-universal.sh`) - POSIX shell entry point that downloads and delegates to install.sh
 
@@ -114,8 +99,6 @@ python3 -m py_compile scripts/combo.py
 
 6. **Combo Engine** (`scripts/combo.py`) - Creates virtual models that route to multiple providers with fallback or round-robin strategies
 
-7. **Sync Script** (`scripts/sync/9router_claude_sync.py`) - Keeps Claude Code settings aligned with 9router's current state
-
 ### Data Flow
 
 ```
@@ -124,8 +107,6 @@ User runs installer → 9router deployed on VPS/local
                     9router exposes REST API on port 20128
                                    ↓
          9routerx CLI → combo.py → 9router API → creates combos in db.json
-                                   ↓
-        sync script → reads 9router state → updates Claude Code settings.json
 ```
 
 ### Database
