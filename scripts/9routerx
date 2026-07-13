@@ -16,10 +16,60 @@ Usage:
   9routerx combos create
   9routerx combos delete <name>
   9routerx combos test <name>
+  9routerx auto-update [--install-cron]
 
 Env:
   NINE_ROUTER_API   9router base URL (default: http://127.0.0.1:20128)
 EOF
+}
+
+_find_auto_update_py() {
+  local candidates=(
+    "${ROOT_DIR}/scripts/auto-update.py"
+    "$HOME/.9routerx/scripts/auto-update.py"
+  )
+  local f
+  for f in "${candidates[@]}"; do
+    [[ -f "$f" ]] && printf "%s" "$f" && return
+  done
+}
+
+_find_auto_update_cron_sh() {
+  local candidates=(
+    "${ROOT_DIR}/scripts/install_auto_update_cron.sh"
+    "$HOME/.9routerx/scripts/install_auto_update_cron.sh"
+  )
+  local f
+  for f in "${candidates[@]}"; do
+    [[ -f "$f" ]] && printf "%s" "$f" && return
+  done
+}
+
+auto_update() {
+  need_python
+  local auto_update_py
+  auto_update_py="$(_find_auto_update_py)"
+  if [[ -z "${auto_update_py:-}" ]]; then
+    echo "auto-update.py not found. Run the installer first." >&2
+    exit 1
+  fi
+  python3 "$auto_update_py" "$@"
+}
+
+install_auto_update_cron() {
+  local auto_update_py cron_sh
+  auto_update_py="$(_find_auto_update_py)"
+  cron_sh="$(_find_auto_update_cron_sh)"
+  if [[ -z "${auto_update_py:-}" ]]; then
+    echo "auto-update.py not found. Run the installer first." >&2
+    exit 1
+  fi
+  if [[ -z "${cron_sh:-}" ]]; then
+    echo "install_auto_update_cron.sh not found. Run the installer first." >&2
+    exit 1
+  fi
+  local log_path="$HOME/.9router/auto-update.log"
+  bash "$cron_sh" "$auto_update_py" "$log_path"
 }
 
 need_python() {
@@ -187,6 +237,16 @@ case "${1:-}" in
       *)
         usage
         exit 1
+        ;;
+    esac
+    ;;
+  auto-update)
+    case "${2:-}" in
+      --install-cron)
+        install_auto_update_cron
+        ;;
+      *)
+        auto_update
         ;;
     esac
     ;;

@@ -29,6 +29,7 @@ jobs:
           shellcheck -s bash scripts/install.sh
           shellcheck -s bash scripts/doctor.sh
           shellcheck -s bash scripts/bootstrap-vps.sh
+          shellcheck -s bash scripts/install_auto_update_cron.sh
 
   syntax-check:
     name: Syntax Check
@@ -45,10 +46,12 @@ jobs:
           bash -n scripts/install.sh
           bash -n scripts/doctor.sh
           bash -n scripts/bootstrap-vps.sh
+          bash -n scripts/install_auto_update_cron.sh
 
       - name: Check Python syntax
         run: |
           python3 -m py_compile scripts/combo.py
+          python3 -m py_compile scripts/auto-update.py
 
       - name: Check Worker syntax
         run: node -e "import('./worker.js').then(()=>console.log('worker ok'))"

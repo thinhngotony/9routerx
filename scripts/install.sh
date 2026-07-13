@@ -416,6 +416,36 @@ install_9routerx_cli() {
   ok "9routerx CLI installed"
 }
 
+install_auto_update_cron() {
+  local auto_update_py="${ROOT_DIR}/scripts/auto-update.py"
+  local cron_sh="${ROOT_DIR}/scripts/install_auto_update_cron.sh"
+
+  if [[ ! -f "$auto_update_py" ]]; then
+    auto_update_py="$HOME/.9routerx/scripts/auto-update.py"
+    cron_sh="$HOME/.9routerx/scripts/install_auto_update_cron.sh"
+  fi
+
+  if [[ ! -f "$auto_update_py" ]]; then
+    info "auto-update.py not found — skipping cron setup"
+    return
+  fi
+
+  if ! tty_available; then
+    info "No TTY — skipping auto-update cron. Run manually: bash $cron_sh $auto_update_py"
+    return
+  fi
+
+  local confirm
+  confirm="$(tty_read "      Enable daily auto-update (cron)? (Y/n)" "Y")"
+  if [[ "${confirm:-Y}" =~ ^[Yy]$ ]]; then
+    local log_path="$HOME/.9router/auto-update.log"
+    bash "$cron_sh" "$auto_update_py" "$log_path" 2>&1 | indent "         "
+    ok "Auto-update enabled — runs daily, only updates when idle"
+  else
+    info "Auto-update skipped"
+  fi
+}
+
 # ── Headless Cursor DB ───────────────────────────────────────────────────────
 init_cursor_state_db_headless() {
   local db1="$HOME/.config/Cursor/User/globalStorage/state.vscdb"
@@ -1317,6 +1347,10 @@ main() {
   hdr "Database"
   init_9router_db
   start_9router_daemon
+
+  if [[ "$MODE" == "vps-headless" ]]; then
+    install_auto_update_cron
+  fi
 
   print_local_summary
 }
