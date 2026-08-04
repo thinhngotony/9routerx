@@ -63,6 +63,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate sync script flags
+        run: |
+          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--watch"
+          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--interval"
+          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--quiet"
+          python3 scripts/sync/9router_claude_sync.py --help | grep -q -- "--refresh-default-models"
+
+      - name: Validate cron installer idempotence
+        run: |
+          grep -q '*/1 \* \* \* \*' scripts/sync/install_sync_cron.sh
+          grep -q 'Updated cron entry\|Installed cron entry' scripts/sync/install_sync_cron.sh
       - name: Validate installer includes required tools
         run: |
           grep -q 'install_claude_code' scripts/install.sh
