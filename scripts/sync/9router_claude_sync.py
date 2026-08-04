@@ -412,6 +412,7 @@ def sync_claude_code(
     use_combos: bool,
     verbose: bool,
     refresh_default_models: bool = False,
+    probe_default_models: bool = True,
 ) -> bool:
     """
     Update ~/.claude/settings.json:
@@ -442,8 +443,10 @@ def sync_claude_code(
     # model probing works even on a fresh install before the user sets a token.
     api_key = env.get("ANTHROPIC_AUTH_TOKEN", "").strip()
 
-    need_default_models = refresh_default_models or any(
-        not str(env.get(k, "")).strip() for k in DEFAULT_MODEL_ENV_KEYS
+    need_default_models = probe_default_models and (
+        refresh_default_models or any(
+            not str(env.get(k, "")).strip() for k in DEFAULT_MODEL_ENV_KEYS
+        )
     )
 
     model_candidates: Dict[str, List[str]] = {}
@@ -609,6 +612,7 @@ def sync_once(
     shell_profiles: Optional[List[str]],
     verbose: bool,
     refresh_default_models: bool = False,
+    probe_default_models: bool = True,
 ) -> int:
     try:
         router_base = get_effective_base_url(router_url)
@@ -621,7 +625,11 @@ def sync_once(
 
     changed = False
     changed |= sync_claude_code(
-        router_base, use_combos, verbose, refresh_default_models=refresh_default_models
+        router_base,
+        use_combos,
+        verbose,
+        refresh_default_models=refresh_default_models,
+        probe_default_models=probe_default_models,
     )
 
     if sync_cursor:
@@ -729,6 +737,7 @@ Examples:
             refresh_default_models=args.refresh_default_models,
         )
 
+    probe_default_models = True
     while True:
         rc = sync_once(
             router_url=args.router_url,
@@ -737,11 +746,14 @@ Examples:
             use_combos=args.use_combos,
             shell_profiles=args.shell_profiles,
             verbose=verbose,
-            refresh_default_models=args.refresh_default_models,
+            refresh_default_models=args.refresh_default_models and probe_default_models,
+            probe_default_models=probe_default_models,
         )
         if rc != 0:
             return rc
+        probe_default_models = False
         time.sleep(max(5, args.interval))
+
 
 
 if __name__ == "__main__":
