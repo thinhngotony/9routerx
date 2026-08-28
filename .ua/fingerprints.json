@@ -1,0 +1,1244 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "9b5b7002a71bcca508ad9a0d5c5e447c0914982a",
+  "generatedAt": "2026-08-27T16:32:19.828Z",
+  "files": {
+    ".github/workflows/ci.yml": {
+      "filePath": ".github/workflows/ci.yml",
+      "contentHash": "d4ccb8cb87ac26b50e0fb6d05d743f3f1d2a96cb8cf9ed40c873403a561d8408",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 160,
+      "hasStructuralAnalysis": true
+    },
+    "CHANGELOG.md": {
+      "filePath": "CHANGELOG.md",
+      "contentHash": "c067ec40b1ac0233bb14d67bbaf20ddcd3369cbb35f18536b6e5c2625bd8d8cd",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 52,
+      "hasStructuralAnalysis": true
+    },
+    "CLAUDE.md": {
+      "filePath": "CLAUDE.md",
+      "contentHash": "f9f64e6fd4733fe9b3793237282c27942e2dbbdc9b6f8daa4cff23e7281226c7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 133,
+      "hasStructuralAnalysis": true
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "905c0ddcb28a9643d7bafe251ad91ceb24abe62a235cac04cddfe26b90ebdc4f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 447,
+      "hasStructuralAnalysis": true
+    },
+    "install-universal.sh": {
+      "filePath": "install-universal.sh",
+      "contentHash": "1c8aa32814245232e630e0b72461b4a943dc619b2a3097982c67ec2f31c0ae13",
+      "functions": [
+        {
+          "name": "detect_os",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "safe_download",
+          "params": [],
+          "exported": false,
+          "lineCount": 21
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 118,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/9routerx": {
+      "filePath": "scripts/9routerx",
+      "contentHash": "dca84cf78b5c5399f595fa7fc51e3fd68f50ad80ad4c04c75f98e473dca59d2c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 258,
+      "hasStructuralAnalysis": false
+    },
+    "scripts/auto-update.py": {
+      "filePath": "scripts/auto-update.py",
+      "contentHash": "9aab7326de811929833edc261c0e7209c269f9806dfe4fd93d4c700cd1f7a5f8",
+      "functions": [
+        {
+          "name": "_log",
+          "params": [
+            "msg"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_npm_global_json",
+          "params": [
+            "pkg"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_get_installed_version",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_get_latest_version",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_last_request_time",
+          "params": [],
+          "returnType": "datetime",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "_is_idle",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_restart_service",
+          "params": [],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 60
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        }
+      ],
+      "exports": [
+        "_log",
+        "_npm_global_json",
+        "_get_installed_version",
+        "_get_latest_version",
+        "_last_request_time",
+        "_is_idle",
+        "_restart_service",
+        "main"
+      ],
+      "totalLines": 184,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/bootstrap-vps.sh": {
+      "filePath": "scripts/bootstrap-vps.sh",
+      "contentHash": "c0bf165ff29fb758d7bac28bdb44b2baa5b7961ebabbf28bb977cff64d03f1e8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/combo.py": {
+      "filePath": "scripts/combo.py",
+      "contentHash": "23396a8d9d3471d6517026eec09c9e556b1e36aa49fbc27fc3d83b1d1c57fb56",
+      "functions": [
+        {
+          "name": "utc_now_iso",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "read_json",
+          "params": [
+            "path"
+          ],
+          "returnType": "Dict[str, Any]",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "write_json",
+          "params": [
+            "path",
+            "data"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "http_json",
+          "params": [
+            "url",
+            "method",
+            "headers",
+            "body",
+            "timeout"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "fetch_models",
+          "params": [
+            "api_base",
+            "api_key"
+          ],
+          "returnType": "List[str]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "ensure_db_shape",
+          "params": [
+            "db"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "normalize_strategy",
+          "params": [
+            "s"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "upsert_combo",
+          "params": [
+            "db",
+            "combo_name",
+            "models",
+            "strategy"
+          ],
+          "returnType": "Combo",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "list_combos",
+          "params": [
+            "db"
+          ],
+          "returnType": "List[Combo]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "delete_combo",
+          "params": [
+            "db",
+            "name"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "parse_models_arg",
+          "params": [
+            "models_arg"
+          ],
+          "returnType": "List[str]",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "get_active_api_key_from_db",
+          "params": [
+            "db"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "cmd_models",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "cmd_list",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "cmd_create",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 31
+        },
+        {
+          "name": "_probe_model",
+          "params": [
+            "api_base",
+            "model",
+            "api_key"
+          ],
+          "returnType": "Tuple[bool, str]",
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "cmd_test",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "cmd_delete",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 36
+        }
+      ],
+      "classes": [
+        {
+          "name": "Combo",
+          "methods": [],
+          "properties": [
+            "id",
+            "name",
+            "models",
+            "createdAt",
+            "updatedAt"
+          ],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclasses"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "dt"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "signal",
+          "specifiers": [
+            "signal"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "uuid",
+          "specifiers": [
+            "uuid"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "urllib.error"
+          ]
+        },
+        {
+          "source": "urllib.request",
+          "specifiers": [
+            "urllib.request"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List",
+            "Optional",
+            "Tuple"
+          ]
+        }
+      ],
+      "exports": [
+        "utc_now_iso",
+        "read_json",
+        "write_json",
+        "http_json",
+        "fetch_models",
+        "Combo",
+        "ensure_db_shape",
+        "normalize_strategy",
+        "upsert_combo",
+        "list_combos",
+        "delete_combo",
+        "parse_models_arg",
+        "get_active_api_key_from_db",
+        "cmd_models",
+        "cmd_list",
+        "cmd_create",
+        "_probe_model",
+        "cmd_test",
+        "cmd_delete",
+        "main"
+      ],
+      "totalLines": 363,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/doctor.sh": {
+      "filePath": "scripts/doctor.sh",
+      "contentHash": "59d5f0ba0953f61007157a349b3c2961c7403777358478d8c03e15246b6de890",
+      "functions": [
+        {
+          "name": "pass",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "fail",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "warn",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "info",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "hdr",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "sep",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "has_cmd",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "tty_available",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "tty_read",
+          "params": [],
+          "exported": false,
+          "lineCount": 19
+        },
+        {
+          "name": "usage",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "parse_args",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "choose_mode_if_needed",
+          "params": [],
+          "exported": false,
+          "lineCount": 23
+        },
+        {
+          "name": "check_cmd",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "check_file",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "check_9router_process",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "check_9router_http",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "check_localhost_ipv6_trap",
+          "params": [],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "check_systemd_service",
+          "params": [],
+          "exported": false,
+          "lineCount": 32
+        },
+        {
+          "name": "check_common",
+          "params": [],
+          "exported": false,
+          "lineCount": 21
+        },
+        {
+          "name": "check_local_cursor",
+          "params": [],
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "check_client_config",
+          "params": [],
+          "exported": false,
+          "lineCount": 84
+        },
+        {
+          "name": "check_vps_headless",
+          "params": [],
+          "exported": false,
+          "lineCount": 28
+        },
+        {
+          "name": "run_fix",
+          "params": [],
+          "exported": false,
+          "lineCount": 129
+        },
+        {
+          "name": "print_summary",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 34
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 543,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/generate-api-key.sh": {
+      "filePath": "scripts/generate-api-key.sh",
+      "contentHash": "8a4e1568a580e2a09a5860f1bdf389f5b90f6e5104e48f1005d92e1c13c70854",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 89,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/install.sh": {
+      "filePath": "scripts/install.sh",
+      "contentHash": "09bc9a095dd8ee8326980215e4a4cf0762a71f19b0fce3deee6f0542f6edef0e",
+      "functions": [
+        {
+          "name": "ok",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "info",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "err",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "wrn",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "step",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "hdr",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "sep",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "blank",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "banner",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "indent",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
+        },
+        {
+          "name": "has_cmd",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "tty_available",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "tty_read",
+          "params": [],
+          "exported": false,
+          "lineCount": 32
+        },
+        {
+          "name": "usage",
+          "params": [],
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "parse_args",
+          "params": [],
+          "exported": false,
+          "lineCount": 23
+        },
+        {
+          "name": "choose_mode_if_needed",
+          "params": [],
+          "exported": false,
+          "lineCount": 41
+        },
+        {
+          "name": "resolve_mode",
+          "params": [],
+          "exported": false,
+          "lineCount": 14
+        },
+        {
+          "name": "npm_global_install",
+          "params": [],
+          "exported": false,
+          "lineCount": 31
+        },
+        {
+          "name": "install_homebrew",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "install_node_if_missing",
+          "params": [],
+          "exported": false,
+          "lineCount": 32
+        },
+        {
+          "name": "npm_pkg_outdated",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "install_or_update_npm_pkg",
+          "params": [],
+          "exported": false,
+          "lineCount": 22
+        },
+        {
+          "name": "install_claude_code",
+          "params": [],
+          "exported": false,
+          "lineCount": 12
+        },
+        {
+          "name": "install_antigravity",
+          "params": [],
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "install_copilot_cli",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "install_cursor",
+          "params": [],
+          "exported": false,
+          "lineCount": 25
+        },
+        {
+          "name": "install_9router",
+          "params": [],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "install_9routerx_cli",
+          "params": [],
+          "exported": false,
+          "lineCount": 20
+        },
+        {
+          "name": "install_auto_update_cron",
+          "params": [],
+          "exported": false,
+          "lineCount": 29
+        },
+        {
+          "name": "init_cursor_state_db_headless",
+          "params": [],
+          "exported": false,
+          "lineCount": 43
+        },
+        {
+          "name": "init_9router_db",
+          "params": [],
+          "exported": false,
+          "lineCount": 43
+        },
+        {
+          "name": "_wait_for_9router",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "_install_systemd_service",
+          "params": [],
+          "exported": false,
+          "lineCount": 63
+        },
+        {
+          "name": "start_9router_daemon",
+          "params": [],
+          "exported": false,
+          "lineCount": 40
+        },
+        {
+          "name": "read_cursor_auth_from_db",
+          "params": [],
+          "exported": false,
+          "lineCount": 44
+        },
+        {
+          "name": "remote_vps_install",
+          "params": [],
+          "exported": false,
+          "lineCount": 230
+        },
+        {
+          "name": "decode_b64",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "uninstall",
+          "params": [],
+          "exported": false,
+          "lineCount": 338
+        },
+        {
+          "name": "print_local_summary",
+          "params": [],
+          "exported": false,
+          "lineCount": 21
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 60
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1359,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/install_auto_update_cron.sh": {
+      "filePath": "scripts/install_auto_update_cron.sh",
+      "contentHash": "d643ce03209f5930ea24ac403b02306ae77daf0507722453af5e032452c2b3cd",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 63,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/sync/9router_claude_sync.py": {
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "contentHash": "c3145827adb62786e55633e164ddaa5bb67a5158c7a5db635c5214221d4f9b60",
+      "functions": [
+        {
+          "name": "read_json_file",
+          "params": [
+            "path"
+          ],
+          "returnType": "Dict",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "write_json_file",
+          "params": [
+            "path",
+            "data"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "request_json",
+          "params": [
+            "url",
+            "method",
+            "headers",
+            "body",
+            "timeout"
+          ],
+          "returnType": "Dict",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "_extract_local_tunnel_url",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "get_effective_base_url",
+          "params": [
+            "router_url"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "_model_works",
+          "params": [
+            "router_base",
+            "model",
+            "api_key"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "pick_working_model",
+          "params": [
+            "router_base",
+            "candidates",
+            "current",
+            "api_key"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_extract_version",
+          "params": [
+            "model_id"
+          ],
+          "returnType": "tuple",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "fetch_combos",
+          "params": [
+            "router_base",
+            "api_key"
+          ],
+          "returnType": "List[Dict]",
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "_tier_of",
+          "params": [
+            "model_id"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_combos_by_tier",
+          "params": [
+            "combos"
+          ],
+          "returnType": "Dict[str, List[str]]",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "discover_model_candidates",
+          "params": [
+            "router_base",
+            "api_key",
+            "use_combos"
+          ],
+          "returnType": "Dict[str, List[str]]",
+          "exported": true,
+          "lineCount": 109
+        },
+        {
+          "name": "sync_claude_code",
+          "params": [
+            "router_base",
+            "use_combos",
+            "verbose",
+            "refresh_default_models",
+            "probe_default_models"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 85
+        },
+        {
+          "name": "_find_cursor_settings",
+          "params": [],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "sync_cursor_settings",
+          "params": [
+            "router_base",
+            "verbose"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "_update_shell_profile",
+          "params": [
+            "path",
+            "router_base",
+            "verbose"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "sync_shell_profiles",
+          "params": [
+            "router_base",
+            "profiles",
+            "verbose"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "sync_once",
+          "params": [
+            "router_url",
+            "sync_cursor",
+            "sync_shell",
+            "use_combos",
+            "shell_profiles",
+            "verbose",
+            "refresh_default_models",
+            "probe_default_models"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 38
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 107
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "platform",
+          "specifiers": [
+            "platform"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "urllib.error"
+          ]
+        },
+        {
+          "source": "urllib.request",
+          "specifiers": [
+            "urllib.request"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "read_json_file",
+        "write_json_file",
+        "request_json",
+        "_extract_local_tunnel_url",
+        "get_effective_base_url",
+        "_model_works",
+        "pick_working_model",
+        "_extract_version",
+        "fetch_combos",
+        "_tier_of",
+        "_combos_by_tier",
+        "discover_model_candidates",
+        "sync_claude_code",
+        "_find_cursor_settings",
+        "sync_cursor_settings",
+        "_update_shell_profile",
+        "sync_shell_profiles",
+        "sync_once",
+        "main"
+      ],
+      "totalLines": 761,
+      "hasStructuralAnalysis": true
+    },
+    "worker.js": {
+      "filePath": "worker.js",
+      "contentHash": "a6ee53987b8432d31fb4d83d64c1a42e247dc476163740b3de4400a8075b26f3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 72,
+      "hasStructuralAnalysis": true
+    },
+    "wrangler.toml": {
+      "filePath": "wrangler.toml",
+      "contentHash": "013232fdc020da26acbc4112d378ab8c071ed6069f0a6c8d6aca60af46eb90fa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

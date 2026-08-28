@@ -1,0 +1,135 @@
+{
+  "name": "9routerx",
+  "description": "One command, multi-provider AI gateway, everywhere. 9routerx installs and manages Claude Code, Antigravity, GitHub Copilot CLI, Cursor IDE, and 9router on local machines and VPS hosts.",
+  "languages": [
+    "javascript",
+    "markdown",
+    "python",
+    "shell",
+    "toml",
+    "unknown",
+    "yaml"
+  ],
+  "frameworks": [
+    "Cloudflare Workers"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "language": "yaml",
+      "sizeLines": 159,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "language": "markdown",
+      "sizeLines": 51,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "CLAUDE.md",
+      "language": "markdown",
+      "sizeLines": 132,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "sizeLines": 446,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "install-universal.sh",
+      "language": "shell",
+      "sizeLines": 117,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/9routerx",
+      "language": "unknown",
+      "sizeLines": 257,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/auto-update.py",
+      "language": "python",
+      "sizeLines": 183,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/bootstrap-vps.sh",
+      "language": "shell",
+      "sizeLines": 6,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/combo.py",
+      "language": "python",
+      "sizeLines": 362,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/doctor.sh",
+      "language": "shell",
+      "sizeLines": 542,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/generate-api-key.sh",
+      "language": "shell",
+      "sizeLines": 88,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/install.sh",
+      "language": "shell",
+      "sizeLines": 1358,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/install_auto_update_cron.sh",
+      "language": "shell",
+      "sizeLines": 62,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/sync/9router_claude_sync.py",
+      "language": "python",
+      "sizeLines": 760,
+      "fileCategory": "code"
+    },
+    {
+      "path": "worker.js",
+      "language": "javascript",
+      "sizeLines": 71,
+      "fileCategory": "code"
+    },
+    {
+      "path": "wrangler.toml",
+      "language": "toml",
+      "sizeLines": 6,
+      "fileCategory": "config"
+    }
+  ],
+  "totalFiles": 16,
+  "filteredByIgnore": 2,
+  "estimatedComplexity": "small",
+  "importMap": {
+    ".github/workflows/ci.yml": [],
+    "CHANGELOG.md": [],
+    "CLAUDE.md": [],
+    "README.md": [],
+    "install-universal.sh": [],
+    "scripts/9routerx": [],
+    "scripts/auto-update.py": [],
+    "scripts/bootstrap-vps.sh": [],
+    "scripts/combo.py": [],
+    "scripts/doctor.sh": [],
+    "scripts/generate-api-key.sh": [],
+    "scripts/install.sh": [],
+    "scripts/install_auto_update_cron.sh": [],
+    "scripts/sync/9router_claude_sync.py": [],
+    "worker.js": [],
+    "wrangler.toml": []
+  }
+}

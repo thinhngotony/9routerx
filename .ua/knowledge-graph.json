@@ -1,0 +1,3127 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "9routerx",
+    "languages": [
+      "javascript",
+      "markdown",
+      "python",
+      "shell",
+      "toml",
+      "unknown",
+      "yaml"
+    ],
+    "frameworks": [
+      "Cloudflare Workers"
+    ],
+    "description": "One command, multi-provider AI gateway, everywhere. 9routerx installs and manages Claude Code, Antigravity, GitHub Copilot CLI, Cursor IDE, and 9router on local machines and VPS hosts.",
+    "analyzedAt": "2026-08-27T16:31:48.034Z",
+    "gitCommitHash": "9b5b7002a71bcca508ad9a0d5c5e447c0914982a"
+  },
+  "nodes": [
+    {
+      "id": "pipeline:.github/workflows/ci.yml",
+      "type": "pipeline",
+      "name": "ci.yml",
+      "filePath": ".github/workflows/ci.yml",
+      "summary": "GitHub Actions workflow that lints shell scripts, checks shell, Python, and Worker syntax, and runs functional contract checks on pushes and pull requests to master. Version tags create a GitHub release only after all validation jobs succeed.",
+      "tags": [
+        "ci-cd",
+        "github-actions",
+        "quality-gates",
+        "functional-tests",
+        "release-automation"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "The release job uses GitHub Actions job dependencies and a tag predicate to gate changelog-backed releases on all validation jobs."
+    },
+    {
+      "id": "document:CHANGELOG.md",
+      "type": "document",
+      "name": "CHANGELOG.md",
+      "filePath": "CHANGELOG.md",
+      "summary": "Tracks the 1.0.0 and 1.1.0 releases, including remote VPS installation, universal-installer improvements, Cloudflare Worker routes, health tooling, and shell fixes.",
+      "tags": [
+        "documentation",
+        "release-notes",
+        "version-history",
+        "installer"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:CLAUDE.md",
+      "type": "document",
+      "name": "CLAUDE.md",
+      "filePath": "CLAUDE.md",
+      "summary": "Provides repository development guidance covering installation and health commands, combo management, Cloudflare Worker deployment, component architecture, data flow, implementation constraints, and troubleshooting.",
+      "tags": [
+        "documentation",
+        "developer-guide",
+        "architecture",
+        "troubleshooting"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Explains the one-command local and VPS installation flow for the multi-provider AI gateway, including health checks, virtual model combos, Cloudflare Worker deployment, release operations, troubleshooting, and API-key security.",
+      "tags": [
+        "documentation",
+        "entry-point",
+        "installation",
+        "ai-gateway",
+        "security"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:install-universal.sh",
+      "type": "file",
+      "name": "install-universal.sh",
+      "filePath": "install-universal.sh",
+      "summary": "Acts as the POSIX shell bootstrap entry point: it selects the latest release, downloads required and optional 9routerx scripts into ~/.9routerx using atomic temporary files, sets executable permissions, and hands control to the core installer.",
+      "tags": [
+        "entry-point",
+        "installer",
+        "shell-script",
+        "download",
+        "bootstrap"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Uses POSIX sh with set -eu and an atomic mktemp-then-mv download pattern restricted to HTTPS."
+    },
+    {
+      "id": "function:install-universal.sh:safe_download",
+      "type": "function",
+      "name": "safe_download",
+      "filePath": "install-universal.sh",
+      "lineRange": [
+        37,
+        57
+      ],
+      "summary": "Downloads one installer asset to a temporary sibling file, verifies that it is non-empty, atomically moves it into place, and cleans up while reporting failures.",
+      "tags": [
+        "utility",
+        "download",
+        "atomic-write",
+        "error-handling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:wrangler.toml",
+      "type": "config",
+      "name": "wrangler.toml",
+      "filePath": "wrangler.toml",
+      "summary": "Configures the 9routerx Cloudflare Worker deployment with worker.js as its entry point and a 2024-01-01 compatibility date.",
+      "tags": [
+        "configuration",
+        "cloudflare-worker",
+        "deployment",
+        "edge-runtime"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/bootstrap-vps.sh",
+      "type": "file",
+      "name": "bootstrap-vps.sh",
+      "filePath": "scripts/bootstrap-vps.sh",
+      "summary": "Thin VPS bootstrap entry point that resolves its sibling installer and replaces the current process with install.sh in non-interactive vps-headless mode.",
+      "tags": [
+        "entry-point",
+        "bootstrap",
+        "vps",
+        "deployment"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/doctor.sh",
+      "type": "file",
+      "name": "doctor.sh",
+      "filePath": "scripts/doctor.sh",
+      "summary": "Diagnoses local Cursor and headless VPS installations by checking required tools, 9router health, client routing configuration, and Linux service persistence, with optional remediation for server failures.",
+      "tags": [
+        "diagnostics",
+        "health-check",
+        "remediation",
+        "vps",
+        "shell-script"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Strict-mode Bash uses shared issue flags to separate diagnosis from remediation and embeds Python for JSON configuration inspection."
+    },
+    {
+      "id": "function:scripts/doctor.sh:tty_read",
+      "type": "function",
+      "name": "tty_read",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        43,
+        61
+      ],
+      "summary": "Reads an interactive value from /dev/tty when available, otherwise falls back to standard input, and applies the supplied default for empty input.",
+      "tags": [
+        "terminal-input",
+        "interactive",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:usage",
+      "type": "function",
+      "name": "usage",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        64,
+        74
+      ],
+      "summary": "Prints command-line help for selecting a diagnostic mode and enabling interactive or unattended remediation.",
+      "tags": [
+        "cli",
+        "help-output",
+        "documentation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:parse_args",
+      "type": "function",
+      "name": "parse_args",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        76,
+        86
+      ],
+      "summary": "Parses doctor mode, fix, yes, and help flags while rejecting unknown options.",
+      "tags": [
+        "cli",
+        "argument-parsing",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:choose_mode_if_needed",
+      "type": "function",
+      "name": "choose_mode_if_needed",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        89,
+        111
+      ],
+      "summary": "Requires or interactively chooses between local Cursor and headless VPS diagnostics, refusing ambiguous non-TTY execution.",
+      "tags": [
+        "cli",
+        "mode-selection",
+        "interactive"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:check_9router_process",
+      "type": "function",
+      "name": "check_9router_process",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        132,
+        148
+      ],
+      "summary": "Locates the 9router executable, checks for a matching running process, and records whether startup remediation is required.",
+      "tags": [
+        "health-check",
+        "process-management",
+        "diagnostics"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:check_systemd_service",
+      "type": "function",
+      "name": "check_systemd_service",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        170,
+        201
+      ],
+      "summary": "Checks Linux systemd availability plus the 9router unit active and enabled states, then records install or restart remediation flags.",
+      "tags": [
+        "health-check",
+        "systemd",
+        "service-management"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:check_common",
+      "type": "function",
+      "name": "check_common",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        203,
+        223
+      ],
+      "summary": "Runs shared binary, database, process, HTTP, IPv4/localhost, and Linux service checks used by every diagnostic mode.",
+      "tags": [
+        "diagnostics",
+        "dependency-check",
+        "health-check"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:check_local_cursor",
+      "type": "function",
+      "name": "check_local_cursor",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        225,
+        242
+      ],
+      "summary": "Checks for the Cursor CLI and for a signed-in Cursor state database across macOS and Linux locations.",
+      "tags": [
+        "diagnostics",
+        "cursor",
+        "authentication"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:check_client_config",
+      "type": "function",
+      "name": "check_client_config",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        244,
+        327
+      ],
+      "summary": "Validates Claude Code, shell, and Cursor routing settings, warns about insecure dummy tokens on public endpoints, and probes the configured 9router address.",
+      "tags": [
+        "configuration",
+        "validation",
+        "security",
+        "connectivity"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/doctor.sh:check_vps_headless",
+      "type": "function",
+      "name": "check_vps_headless",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        329,
+        356
+      ],
+      "summary": "Checks both case variants of the headless Cursor state database path and reports recent 9router startup log entries.",
+      "tags": [
+        "diagnostics",
+        "vps",
+        "headless"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:run_fix",
+      "type": "function",
+      "name": "run_fix",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        359,
+        487
+      ],
+      "summary": "Confirms and applies server remediations by installing or restarting a systemd unit, falling back to nohup, and polling the gateway for recovery.",
+      "tags": [
+        "remediation",
+        "systemd",
+        "process-management",
+        "health-check"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/doctor.sh:print_summary",
+      "type": "function",
+      "name": "print_summary",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        490,
+        504
+      ],
+      "summary": "Prints accumulated pass, warning, and failure counts for the diagnostic run.",
+      "tags": [
+        "reporting",
+        "diagnostics",
+        "cli"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/doctor.sh:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/doctor.sh",
+      "lineRange": [
+        507,
+        540
+      ],
+      "summary": "Coordinates argument parsing, mode-specific checks, summary reporting, and optional headless remediation before returning a failing status for unresolved checks.",
+      "tags": [
+        "entry-point",
+        "orchestration",
+        "diagnostics"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/generate-api-key.sh",
+      "type": "file",
+      "name": "generate-api-key.sh",
+      "filePath": "scripts/generate-api-key.sh",
+      "summary": "Connects to a remote VPS over SSH, creates a scoped 9router API key through the loopback API, enables login enforcement, and prints the token with a Claude Code configuration example.",
+      "tags": [
+        "api-key",
+        "security",
+        "ssh",
+        "configuration"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "A quoted heredoc sends a strict-mode shell program over SSH so administrative API calls remain bound to the remote loopback interface."
+    },
+    {
+      "id": "file:scripts/install.sh",
+      "type": "file",
+      "name": "install.sh",
+      "filePath": "scripts/install.sh",
+      "summary": "Primary installer and cleanup orchestrator for local Cursor, headless Linux, and remote VPS workflows; it installs AI tooling, initializes state, manages 9router services and cron, and synchronizes Cursor credentials over SSH.",
+      "tags": [
+        "installer",
+        "deployment",
+        "vps",
+        "tooling",
+        "shell-script"
+      ],
+      "complexity": "complex",
+      "languageNotes": "The Bash workflow embeds Python for SQLite and JSON mutations and reuses one SSH ControlMaster connection during remote installation and verification."
+    },
+    {
+      "id": "function:scripts/install.sh:banner",
+      "type": "function",
+      "name": "banner",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        50,
+        60
+      ],
+      "summary": "Prints the branded 9routerx installer banner and product description.",
+      "tags": [
+        "cli",
+        "presentation",
+        "branding"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:tty_read",
+      "type": "function",
+      "name": "tty_read",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        77,
+        108
+      ],
+      "summary": "Reads a prompt response from /dev/tty or standard input and returns the configured default when no value is entered.",
+      "tags": [
+        "terminal-input",
+        "interactive",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:usage",
+      "type": "function",
+      "name": "usage",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        111,
+        123
+      ],
+      "summary": "Prints documented switches for local, headless, and remote-token synchronization workflows.",
+      "tags": [
+        "cli",
+        "help-output",
+        "documentation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:parse_args",
+      "type": "function",
+      "name": "parse_args",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        126,
+        148
+      ],
+      "summary": "Parses install, remote sync, Cursor, and uninstall options into the installer workflow state and rejects unknown flags.",
+      "tags": [
+        "cli",
+        "argument-parsing",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:choose_mode_if_needed",
+      "type": "function",
+      "name": "choose_mode_if_needed",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        151,
+        191
+      ],
+      "summary": "Prompts for an installation, remote synchronization, or cleanup workflow and maps local installation to an OS-appropriate mode.",
+      "tags": [
+        "cli",
+        "mode-selection",
+        "interactive"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:resolve_mode",
+      "type": "function",
+      "name": "resolve_mode",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        193,
+        206
+      ],
+      "summary": "Resolves interactive or compatibility mode selection and validates the final workflow against the supported installer modes.",
+      "tags": [
+        "mode-selection",
+        "validation",
+        "cli"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:npm_global_install",
+      "type": "function",
+      "name": "npm_global_install",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        209,
+        239
+      ],
+      "summary": "Installs a global npm package through a writable prefix, root, sudo, or a user-local macOS prefix according to current permissions.",
+      "tags": [
+        "package-management",
+        "npm",
+        "installation",
+        "permissions"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_homebrew",
+      "type": "function",
+      "name": "install_homebrew",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        242,
+        252
+      ],
+      "summary": "Installs Homebrew when absent, loads the discovered shell environment, and confirms availability.",
+      "tags": [
+        "package-management",
+        "homebrew",
+        "installation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_node_if_missing",
+      "type": "function",
+      "name": "install_node_if_missing",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        254,
+        285
+      ],
+      "summary": "Keeps an existing Node.js/npm pair or installs it through Homebrew, apt, dnf, or yum for the detected operating system.",
+      "tags": [
+        "package-management",
+        "nodejs",
+        "cross-platform",
+        "installation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:npm_pkg_outdated",
+      "type": "function",
+      "name": "npm_pkg_outdated",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        287,
+        296
+      ],
+      "summary": "Compares a globally installed npm package version with the registry version, treating missing packages as outdated and lookup failures as current.",
+      "tags": [
+        "version-check",
+        "npm",
+        "package-management"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_or_update_npm_pkg",
+      "type": "function",
+      "name": "install_or_update_npm_pkg",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        298,
+        319
+      ],
+      "summary": "Installs a missing global npm command or upgrades its backing package when the registry reports a newer version.",
+      "tags": [
+        "package-management",
+        "npm",
+        "installation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_claude_code",
+      "type": "function",
+      "name": "install_claude_code",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        321,
+        332
+      ],
+      "summary": "Updates an existing Claude Code installation or installs it through the official native installer.",
+      "tags": [
+        "installation",
+        "claude-code",
+        "tooling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_antigravity",
+      "type": "function",
+      "name": "install_antigravity",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        334,
+        348
+      ],
+      "summary": "Installs or updates the global antigravity-ide npm package based on command and registry state.",
+      "tags": [
+        "installation",
+        "antigravity-ide",
+        "npm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_copilot_cli",
+      "type": "function",
+      "name": "install_copilot_cli",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        350,
+        366
+      ],
+      "summary": "Installs or upgrades GitHub Copilot through the gh extension when possible, with the npm CLI as a fallback.",
+      "tags": [
+        "installation",
+        "github-copilot",
+        "tooling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_cursor",
+      "type": "function",
+      "name": "install_cursor",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        368,
+        392
+      ],
+      "summary": "Honors the Cursor install policy, keeps an existing CLI, installs the macOS cask, or gives Linux download guidance.",
+      "tags": [
+        "installation",
+        "cursor",
+        "cross-platform"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_9routerx_cli",
+      "type": "function",
+      "name": "install_9routerx_cli",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        398,
+        417
+      ],
+      "summary": "Copies the repository 9routerx launcher into the user-local bin directory and warns when that directory is absent from PATH.",
+      "tags": [
+        "installation",
+        "cli",
+        "file-management"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:install_auto_update_cron",
+      "type": "function",
+      "name": "install_auto_update_cron",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        419,
+        447
+      ],
+      "summary": "Locates the bundled auto-update scripts, asks for consent in a TTY, and invokes the cron installer with the 9router log path.",
+      "tags": [
+        "automation",
+        "cron",
+        "installation",
+        "auto-update"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:init_cursor_state_db_headless",
+      "type": "function",
+      "name": "init_cursor_state_db_headless",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        450,
+        492
+      ],
+      "summary": "Creates both Linux Cursor state database path variants and optionally seeds access, refresh, and email authentication values from the environment.",
+      "tags": [
+        "cursor",
+        "sqlite",
+        "authentication",
+        "headless"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:init_9router_db",
+      "type": "function",
+      "name": "init_9router_db",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        495,
+        537
+      ],
+      "summary": "Creates the initial 9router JSON database with empty provider data and explicit gateway, observability, routing, and authentication defaults.",
+      "tags": [
+        "configuration",
+        "database",
+        "initialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:_wait_for_9router",
+      "type": "function",
+      "name": "_wait_for_9router",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        540,
+        549
+      ],
+      "summary": "Polls the local providers endpoint for up to ten attempts to determine whether 9router is ready.",
+      "tags": [
+        "health-check",
+        "polling",
+        "service-readiness"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:_install_systemd_service",
+      "type": "function",
+      "name": "_install_systemd_service",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        551,
+        613
+      ],
+      "summary": "Writes and enables a hardened 9router systemd unit with restart policy, noninteractive input, and persistent log output.",
+      "tags": [
+        "systemd",
+        "service-management",
+        "deployment",
+        "installation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/install.sh:start_9router_daemon",
+      "type": "function",
+      "name": "start_9router_daemon",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        615,
+        654
+      ],
+      "summary": "Starts 9router on Linux through systemd when available or nohup otherwise, then waits for the local gateway endpoint to become ready.",
+      "tags": [
+        "process-management",
+        "systemd",
+        "service-readiness",
+        "vps"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:read_cursor_auth_from_db",
+      "type": "function",
+      "name": "read_cursor_auth_from_db",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        657,
+        700
+      ],
+      "summary": "Uses embedded Python to locate the Cursor SQLite state database and emit required access, refresh, email, and machine identity values.",
+      "tags": [
+        "cursor",
+        "authentication",
+        "sqlite",
+        "credential-sync"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:remote_vps_install",
+      "type": "function",
+      "name": "remote_vps_install",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        702,
+        931
+      ],
+      "summary": "Maintains one SSH control connection while uploading and running the headless installer, synchronizing Cursor credentials, registering the provider, and remotely verifying or repairing the result.",
+      "tags": [
+        "vps",
+        "remote-installation",
+        "ssh",
+        "credential-sync",
+        "deployment"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/install.sh:uninstall",
+      "type": "function",
+      "name": "uninstall",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        934,
+        1271
+      ],
+      "summary": "Performs scoped configuration, service/data, and tool cleanup with interactive or flag-driven confirmation, dry-run support, and optional Claude removal.",
+      "tags": [
+        "uninstaller",
+        "cleanup",
+        "configuration",
+        "systemd",
+        "package-management"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/install.sh:print_local_summary",
+      "type": "function",
+      "name": "print_local_summary",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        1274,
+        1294
+      ],
+      "summary": "Prints local or headless quick-start commands and the appropriate 9router dashboard address after installation.",
+      "tags": [
+        "reporting",
+        "cli",
+        "installation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/install.sh:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/install.sh",
+      "lineRange": [
+        1297,
+        1356
+      ],
+      "summary": "Dispatches remote sync and uninstall modes or performs the full local/headless dependency, state, daemon, cron, and completion workflow.",
+      "tags": [
+        "entry-point",
+        "orchestration",
+        "installer",
+        "deployment"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/install_auto_update_cron.sh",
+      "type": "file",
+      "name": "install_auto_update_cron.sh",
+      "filePath": "scripts/install_auto_update_cron.sh",
+      "summary": "Idempotently installs or replaces a daily cron entry for auto-update.py, spreading execution across a stable machine-derived time and appending output to the configured log.",
+      "tags": [
+        "automation",
+        "cron",
+        "auto-update",
+        "configuration"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "The schedule hashes an optional machine ID to reduce simultaneous update traffic while retaining a deterministic fallback time."
+    },
+    {
+      "id": "file:scripts/9routerx",
+      "type": "file",
+      "name": "9routerx",
+      "filePath": "scripts/9routerx",
+      "summary": "Provides the top-level 9routerx command, dispatching model browsing, interactive combo management, and safe auto-update operations to the bundled Python utilities.",
+      "tags": [
+        "entry-point",
+        "cli",
+        "model-management",
+        "auto-update"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Bash dispatches subcommands while embedded Python handles grouping and validated interactive model selection."
+    },
+    {
+      "id": "function:scripts/9routerx:usage",
+      "type": "function",
+      "name": "usage",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        9,
+        24
+      ],
+      "summary": "Prints the supported 9routerx commands and the environment variable used to select the router API.",
+      "tags": [
+        "cli",
+        "help-output",
+        "entry-point"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/9routerx:_find_auto_update_py",
+      "type": "function",
+      "name": "_find_auto_update_py",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        26,
+        35
+      ],
+      "summary": "Finds the auto-update Python script in the repository or the installed user directory.",
+      "tags": [
+        "utility",
+        "path-discovery",
+        "auto-update"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/9routerx:_find_auto_update_cron_sh",
+      "type": "function",
+      "name": "_find_auto_update_cron_sh",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        37,
+        46
+      ],
+      "summary": "Finds the cron installer script in the repository or the installed user directory.",
+      "tags": [
+        "utility",
+        "path-discovery",
+        "cron"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/9routerx:auto_update",
+      "type": "function",
+      "name": "auto_update",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        48,
+        57
+      ],
+      "summary": "Validates Python availability and delegates auto-update arguments to the discovered updater script.",
+      "tags": [
+        "cli-command",
+        "auto-update",
+        "process-launch"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/9routerx:install_auto_update_cron",
+      "type": "function",
+      "name": "install_auto_update_cron",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        59,
+        73
+      ],
+      "summary": "Locates updater assets and installs the scheduled auto-update job with its user log path.",
+      "tags": [
+        "cli-command",
+        "cron",
+        "auto-update"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/9routerx:models_grouped",
+      "type": "function",
+      "name": "models_grouped",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        87,
+        110
+      ],
+      "summary": "Groups available model identifiers by provider prefix and prints a readable provider-by-provider inventory.",
+      "tags": [
+        "cli-command",
+        "model-discovery",
+        "formatting"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/9routerx:prompt",
+      "type": "function",
+      "name": "prompt",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        117,
+        131
+      ],
+      "summary": "Reads an interactive value and returns the supplied default when the user enters nothing.",
+      "tags": [
+        "utility",
+        "interactive-input",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/9routerx:combo_create_interactive",
+      "type": "function",
+      "name": "combo_create_interactive",
+      "filePath": "scripts/9routerx",
+      "lineRange": [
+        133,
+        211
+      ],
+      "summary": "Guides the user through naming a combo, choosing its strategy and models, then delegates validated creation to combo.py.",
+      "tags": [
+        "cli-command",
+        "interactive-input",
+        "model-management",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/auto-update.py",
+      "type": "file",
+      "name": "auto-update.py",
+      "filePath": "scripts/auto-update.py",
+      "summary": "Checks npm for a newer 9router release, waits until proxy traffic has been idle for an hour, then upgrades the global package and restarts the systemd service.",
+      "tags": [
+        "auto-update",
+        "service",
+        "npm",
+        "idle-detection"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/auto-update.py:_log",
+      "type": "function",
+      "name": "_log",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        31,
+        33
+      ],
+      "summary": "Prints a UTC-timestamped updater message immediately.",
+      "tags": [
+        "utility",
+        "logging",
+        "timestamp"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/auto-update.py:_npm_global_json",
+      "type": "function",
+      "name": "_npm_global_json",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        36,
+        44
+      ],
+      "summary": "Runs npm global-package inspection and parses its JSON result, raising on command failure.",
+      "tags": [
+        "utility",
+        "npm",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/auto-update.py:_get_installed_version",
+      "type": "function",
+      "name": "_get_installed_version",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        47,
+        50
+      ],
+      "summary": "Reads the installed global 9router version from npm package metadata.",
+      "tags": [
+        "utility",
+        "npm",
+        "version-detection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/auto-update.py:_get_latest_version",
+      "type": "function",
+      "name": "_get_latest_version",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        53,
+        61
+      ],
+      "summary": "Queries the npm registry for the current 9router release version.",
+      "tags": [
+        "utility",
+        "npm",
+        "version-detection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/auto-update.py:_last_request_time",
+      "type": "function",
+      "name": "_last_request_time",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        64,
+        95
+      ],
+      "summary": "Scans the router request log for the newest valid timestamp, treating missing or malformed data as idle since epoch.",
+      "tags": [
+        "utility",
+        "activity-tracking",
+        "error-handling"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/auto-update.py:_is_idle",
+      "type": "function",
+      "name": "_is_idle",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        98,
+        103
+      ],
+      "summary": "Determines whether the router has received no requests during the configured idle threshold.",
+      "tags": [
+        "utility",
+        "idle-detection",
+        "activity-tracking"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/auto-update.py:_restart_service",
+      "type": "function",
+      "name": "_restart_service",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        106,
+        115
+      ],
+      "summary": "Attempts to restart the 9router systemd unit and reports whether the command succeeded.",
+      "tags": [
+        "utility",
+        "systemd",
+        "service-control"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/auto-update.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/auto-update.py",
+      "lineRange": [
+        120,
+        179
+      ],
+      "summary": "Coordinates version checks, idle gating, global npm installation, and service restart for one updater run.",
+      "tags": [
+        "entry-point",
+        "auto-update",
+        "orchestration",
+        "error-handling"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/combo.py",
+      "type": "file",
+      "name": "combo.py",
+      "filePath": "scripts/combo.py",
+      "summary": "Implements the CLI and persistence operations for listing, creating, testing, and deleting 9router virtual-model combos with fallback or round-robin strategies.",
+      "tags": [
+        "cli",
+        "model-management",
+        "configuration",
+        "api-client"
+      ],
+      "complexity": "complex",
+      "languageNotes": "JSON mutations are persisted atomically through a temporary file and os.replace."
+    },
+    {
+      "id": "function:scripts/combo.py:utc_now_iso",
+      "type": "function",
+      "name": "utc_now_iso",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        21,
+        22
+      ],
+      "summary": "Returns the current UTC time as an ISO 8601 string ending in Z.",
+      "tags": [
+        "utility",
+        "timestamp",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:read_json",
+      "type": "function",
+      "name": "read_json",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        25,
+        27
+      ],
+      "summary": "Loads a JSON object from the requested UTF-8 file.",
+      "tags": [
+        "utility",
+        "configuration",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:write_json",
+      "type": "function",
+      "name": "write_json",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        30,
+        36
+      ],
+      "summary": "Atomically writes formatted JSON through a temporary file and replacement.",
+      "tags": [
+        "utility",
+        "configuration",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:http_json",
+      "type": "function",
+      "name": "http_json",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        39,
+        52
+      ],
+      "summary": "Sends an HTTP request with an optional JSON body and decodes the JSON response.",
+      "tags": [
+        "api-client",
+        "serialization",
+        "http"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:fetch_models",
+      "type": "function",
+      "name": "fetch_models",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        55,
+        68
+      ],
+      "summary": "Fetches model identifiers from the router model endpoint, retrying without authentication when the first request fails.",
+      "tags": [
+        "api-client",
+        "model-discovery",
+        "fallback"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:ensure_db_shape",
+      "type": "function",
+      "name": "ensure_db_shape",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        80,
+        89
+      ],
+      "summary": "Initializes the combo, alias, and strategy containers expected in the 9router database.",
+      "tags": [
+        "configuration",
+        "data-model",
+        "normalization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:normalize_strategy",
+      "type": "function",
+      "name": "normalize_strategy",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        92,
+        98
+      ],
+      "summary": "Canonicalizes accepted fallback and round-robin aliases or rejects an unsupported combo strategy.",
+      "tags": [
+        "validation",
+        "normalization",
+        "model-management"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:upsert_combo",
+      "type": "function",
+      "name": "upsert_combo",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        101,
+        134
+      ],
+      "summary": "Creates or updates a combo, preserves its creation metadata, and records the selected per-combo routing strategy.",
+      "tags": [
+        "model-management",
+        "data-model",
+        "configuration",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/combo.py:list_combos",
+      "type": "function",
+      "name": "list_combos",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        137,
+        151
+      ],
+      "summary": "Converts persisted combo dictionaries into typed Combo values for display and selection.",
+      "tags": [
+        "model-management",
+        "serialization",
+        "data-model"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:delete_combo",
+      "type": "function",
+      "name": "delete_combo",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        154,
+        171
+      ],
+      "summary": "Removes a named combo and cleans its associated per-combo strategy entry.",
+      "tags": [
+        "model-management",
+        "configuration",
+        "persistence"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:parse_models_arg",
+      "type": "function",
+      "name": "parse_models_arg",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        174,
+        178
+      ],
+      "summary": "Parses comma-separated model identifiers and enforces the two-model minimum for a combo.",
+      "tags": [
+        "validation",
+        "parsing",
+        "model-management"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:get_active_api_key_from_db",
+      "type": "function",
+      "name": "get_active_api_key_from_db",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        181,
+        190
+      ],
+      "summary": "Selects the active router API key, falling back to the first available key.",
+      "tags": [
+        "configuration",
+        "authentication",
+        "selection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:cmd_models",
+      "type": "function",
+      "name": "cmd_models",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        193,
+        202
+      ],
+      "summary": "Loads router credentials, fetches the available models, and prints one identifier per line.",
+      "tags": [
+        "cli-command",
+        "model-discovery",
+        "api-client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:cmd_list",
+      "type": "function",
+      "name": "cmd_list",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        205,
+        218
+      ],
+      "summary": "Prints each configured combo with its effective strategy and ordered model list.",
+      "tags": [
+        "cli-command",
+        "model-management",
+        "formatting"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:cmd_create",
+      "type": "function",
+      "name": "cmd_create",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        221,
+        251
+      ],
+      "summary": "Validates creation arguments and optional model availability, persists the combo, and prints client usage details.",
+      "tags": [
+        "cli-command",
+        "model-management",
+        "validation",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/combo.py:_probe_model",
+      "type": "function",
+      "name": "_probe_model",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        254,
+        279
+      ],
+      "summary": "Sends a minimal messages request to one model and returns a success flag with diagnostic detail.",
+      "tags": [
+        "api-client",
+        "model-probe",
+        "error-handling"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/combo.py:cmd_test",
+      "type": "function",
+      "name": "cmd_test",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        282,
+        305
+      ],
+      "summary": "Probes every underlying model in a named combo and returns a failing status if any probe fails.",
+      "tags": [
+        "cli-command",
+        "model-probe",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:cmd_delete",
+      "type": "function",
+      "name": "cmd_delete",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        308,
+        319
+      ],
+      "summary": "Deletes a named combo from the local database and reports missing names as a command error.",
+      "tags": [
+        "cli-command",
+        "model-management",
+        "persistence"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/combo.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        322,
+        357
+      ],
+      "summary": "Defines combo-management subcommands and dispatches parsed CLI arguments to the selected handler.",
+      "tags": [
+        "entry-point",
+        "cli",
+        "model-management",
+        "command-dispatch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:scripts/combo.py:Combo",
+      "type": "class",
+      "name": "Combo",
+      "filePath": "scripts/combo.py",
+      "lineRange": [
+        72,
+        77
+      ],
+      "summary": "Represents a persisted virtual-model combo with stable identity, ordered models, and creation and update timestamps.",
+      "tags": [
+        "data-model",
+        "model-management",
+        "dataclass"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:scripts/sync/9router_claude_sync.py",
+      "type": "file",
+      "name": "9router_claude_sync.py",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "summary": "Synchronizes Claude Code, Cursor, and shell profiles with a local or remote 9router endpoint, including discovery and probing of default models or server-defined combos.",
+      "tags": [
+        "configuration",
+        "model-discovery",
+        "cli",
+        "synchronization"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Configuration updates are idempotent, and shell exports are tracked with a managed marker."
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:read_json_file",
+      "type": "function",
+      "name": "read_json_file",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        93,
+        95
+      ],
+      "summary": "Loads a JSON object from a UTF-8 configuration file.",
+      "tags": [
+        "utility",
+        "configuration",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:write_json_file",
+      "type": "function",
+      "name": "write_json_file",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        98,
+        103
+      ],
+      "summary": "Atomically persists formatted JSON through a temporary sibling file.",
+      "tags": [
+        "utility",
+        "configuration",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:request_json",
+      "type": "function",
+      "name": "request_json",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        108,
+        123
+      ],
+      "summary": "Sends an HTTP request with optional JSON data and parses the response object.",
+      "tags": [
+        "api-client",
+        "http",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:_extract_local_tunnel_url",
+      "type": "function",
+      "name": "_extract_local_tunnel_url",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        128,
+        136
+      ],
+      "summary": "Reads and validates the active tunnel URL from local 9router state.",
+      "tags": [
+        "utility",
+        "tunnel",
+        "configuration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:get_effective_base_url",
+      "type": "function",
+      "name": "get_effective_base_url",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        139,
+        158
+      ],
+      "summary": "Prefers an enabled remote tunnel URL and otherwise returns the direct router or local-state endpoint.",
+      "tags": [
+        "url-resolution",
+        "tunnel",
+        "fallback"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:_model_works",
+      "type": "function",
+      "name": "_model_works",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        163,
+        194
+      ],
+      "summary": "Probes a model through the Anthropic-compatible messages endpoint using a valid bearer token.",
+      "tags": [
+        "model-probe",
+        "api-client",
+        "authentication"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:pick_working_model",
+      "type": "function",
+      "name": "pick_working_model",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        197,
+        205
+      ],
+      "summary": "Keeps a working current model or selects the first candidate that passes a live probe.",
+      "tags": [
+        "model-selection",
+        "model-probe",
+        "fallback"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:_extract_version",
+      "type": "function",
+      "name": "_extract_version",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        208,
+        224
+      ],
+      "summary": "Extracts a sortable numeric version tuple from provider-qualified model identifiers.",
+      "tags": [
+        "utility",
+        "parsing",
+        "version-detection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:fetch_combos",
+      "type": "function",
+      "name": "fetch_combos",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        227,
+        256
+      ],
+      "summary": "Retrieves server combos over HTTP and falls back to local database records with their stored strategies.",
+      "tags": [
+        "api-client",
+        "model-management",
+        "fallback",
+        "configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:_tier_of",
+      "type": "function",
+      "name": "_tier_of",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        259,
+        268
+      ],
+      "summary": "Classifies a model or combo identifier as sonnet, opus, haiku, or unclassified.",
+      "tags": [
+        "utility",
+        "model-classification",
+        "parsing"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:_combos_by_tier",
+      "type": "function",
+      "name": "_combos_by_tier",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        271,
+        294
+      ],
+      "summary": "Groups combos by tier using their names or the majority tier of their member models.",
+      "tags": [
+        "model-classification",
+        "model-management",
+        "grouping"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:discover_model_candidates",
+      "type": "function",
+      "name": "discover_model_candidates",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        297,
+        405
+      ],
+      "summary": "Builds ordered default-model candidates from server combos and active provider connections, with deduplicated static fallbacks.",
+      "tags": [
+        "model-discovery",
+        "model-selection",
+        "api-client",
+        "fallback"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:sync_claude_code",
+      "type": "function",
+      "name": "sync_claude_code",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        410,
+        494
+      ],
+      "summary": "Updates Claude Code base URL and missing or explicitly refreshed default-model settings after live candidate discovery and probing.",
+      "tags": [
+        "configuration",
+        "synchronization",
+        "model-selection",
+        "claude-code"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:_find_cursor_settings",
+      "type": "function",
+      "name": "_find_cursor_settings",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        499,
+        508
+      ],
+      "summary": "Returns an existing Cursor settings path or the platform-preferred path to create.",
+      "tags": [
+        "utility",
+        "path-discovery",
+        "cursor"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:sync_cursor_settings",
+      "type": "function",
+      "name": "sync_cursor_settings",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        511,
+        544
+      ],
+      "summary": "Idempotently sets Cursor openai.baseUrl to the active router endpoint and persists the settings file.",
+      "tags": [
+        "configuration",
+        "synchronization",
+        "cursor"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:_update_shell_profile",
+      "type": "function",
+      "name": "_update_shell_profile",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        549,
+        576
+      ],
+      "summary": "Updates or appends the managed ANTHROPIC_BASE_URL export in one shell profile.",
+      "tags": [
+        "configuration",
+        "synchronization",
+        "shell-profile"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:sync_shell_profiles",
+      "type": "function",
+      "name": "sync_shell_profiles",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        579,
+        602
+      ],
+      "summary": "Applies the managed router export to explicit or auto-detected shell profiles and reports whether any changed.",
+      "tags": [
+        "configuration",
+        "synchronization",
+        "shell-profile"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:sync_once",
+      "type": "function",
+      "name": "sync_once",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        607,
+        644
+      ],
+      "summary": "Resolves the active router URL and synchronizes Claude Code plus optional Cursor and shell targets once.",
+      "tags": [
+        "orchestration",
+        "synchronization",
+        "configuration",
+        "error-handling"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/sync/9router_claude_sync.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/sync/9router_claude_sync.py",
+      "lineRange": [
+        649,
+        755
+      ],
+      "summary": "Parses one-shot or watch-mode sync options and repeatedly runs synchronization without re-probing defaults after the first watch iteration.",
+      "tags": [
+        "entry-point",
+        "cli",
+        "watch-mode",
+        "synchronization"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:worker.js",
+      "type": "file",
+      "name": "worker.js",
+      "filePath": "worker.js",
+      "summary": "Serves the 9routerx installer and bootstrap scripts through a Cloudflare Worker, selecting the latest GitHub release when available and disabling cache on script responses.",
+      "tags": [
+        "cloudflare-worker",
+        "distribution",
+        "http-handler",
+        "installer"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Uses the Cloudflare Workers default object export with an asynchronous fetch handler."
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:install-universal.sh",
+      "target": "function:install-universal.sh:safe_download",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "file:install-universal.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CHANGELOG.md",
+      "target": "function:install-universal.sh:safe_download",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:CLAUDE.md",
+      "target": "file:install-universal.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:install-universal.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "config:wrangler.toml",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:tty_read",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:usage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:parse_args",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:choose_mode_if_needed",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:check_9router_process",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:check_systemd_service",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:check_common",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:check_local_cursor",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:check_client_config",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:check_vps_headless",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:run_fix",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:print_summary",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/doctor.sh",
+      "target": "function:scripts/doctor.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:banner",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:tty_read",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:usage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:parse_args",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:choose_mode_if_needed",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:resolve_mode",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:npm_global_install",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_homebrew",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_node_if_missing",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:npm_pkg_outdated",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_or_update_npm_pkg",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_claude_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_antigravity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_copilot_cli",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_cursor",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_9routerx_cli",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:install_auto_update_cron",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:init_cursor_state_db_headless",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:init_9router_db",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:_wait_for_9router",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:_install_systemd_service",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:start_9router_daemon",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:read_cursor_auth_from_db",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:remote_vps_install",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:uninstall",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:print_local_summary",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "function:scripts/install.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/bootstrap-vps.sh",
+      "target": "file:scripts/install.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "file:scripts/doctor.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/install.sh",
+      "target": "file:scripts/install_auto_update_cron.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:usage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:_find_auto_update_py",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:_find_auto_update_cron_sh",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:auto_update",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:install_auto_update_cron",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:models_grouped",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:prompt",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "function:scripts/9routerx:combo_create_interactive",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_log",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_log",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_npm_global_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_npm_global_json",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_get_installed_version",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_get_installed_version",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_get_latest_version",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_get_latest_version",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_last_request_time",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_last_request_time",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_is_idle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_is_idle",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_restart_service",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:_restart_service",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/auto-update.py",
+      "target": "function:scripts/auto-update.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:utc_now_iso",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:utc_now_iso",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:read_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:read_json",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:write_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:write_json",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:http_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:http_json",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:fetch_models",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:fetch_models",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:ensure_db_shape",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:ensure_db_shape",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:normalize_strategy",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:normalize_strategy",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:upsert_combo",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:upsert_combo",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:list_combos",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:list_combos",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:delete_combo",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:delete_combo",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:parse_models_arg",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:parse_models_arg",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:get_active_api_key_from_db",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:get_active_api_key_from_db",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_models",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_models",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_list",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_list",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_create",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:_probe_model",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:_probe_model",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_test",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_test",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_delete",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:cmd_delete",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "function:scripts/combo.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "class:scripts/combo.py:Combo",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/combo.py",
+      "target": "class:scripts/combo.py:Combo",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:read_json_file",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:read_json_file",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:write_json_file",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:write_json_file",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:request_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:request_json",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_extract_local_tunnel_url",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_extract_local_tunnel_url",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:get_effective_base_url",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:get_effective_base_url",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_model_works",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_model_works",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:pick_working_model",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:pick_working_model",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_extract_version",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_extract_version",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:fetch_combos",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:fetch_combos",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_tier_of",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_tier_of",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_combos_by_tier",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_combos_by_tier",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:discover_model_candidates",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:discover_model_candidates",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_claude_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_claude_code",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_find_cursor_settings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_find_cursor_settings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_cursor_settings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_cursor_settings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_update_shell_profile",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:_update_shell_profile",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_shell_profiles",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_shell_profiles",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_once",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:sync_once",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/sync/9router_claude_sync.py",
+      "target": "function:scripts/sync/9router_claude_sync.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "file:scripts/auto-update.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/9routerx",
+      "target": "file:scripts/combo.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:edge-distribution-delivery",
+      "name": "Edge Distribution & Delivery",
+      "description": "Cloudflare Worker distribution, Wrangler deployment configuration, and GitHub Actions validation and release automation for publishing the installer.",
+      "nodeIds": [
+        "pipeline:.github/workflows/ci.yml",
+        "config:wrangler.toml",
+        "file:worker.js"
+      ]
+    },
+    {
+      "id": "layer:installation-lifecycle-operations",
+      "name": "Installation & Lifecycle Operations",
+      "description": "Universal, local, and VPS installation entry points plus health diagnosis and scheduled package lifecycle maintenance.",
+      "nodeIds": [
+        "file:install-universal.sh",
+        "file:scripts/bootstrap-vps.sh",
+        "file:scripts/doctor.sh",
+        "file:scripts/install.sh",
+        "file:scripts/install_auto_update_cron.sh",
+        "file:scripts/auto-update.py"
+      ]
+    },
+    {
+      "id": "layer:gateway-control-credential-sync",
+      "name": "Gateway Control & Credential Sync",
+      "description": "Command-line model combo management, API-key provisioning, and synchronization of 9router connection settings across Claude Code, Cursor, and shell profiles.",
+      "nodeIds": [
+        "file:scripts/generate-api-key.sh",
+        "file:scripts/9routerx",
+        "file:scripts/combo.py",
+        "file:scripts/sync/9router_claude_sync.py"
+      ]
+    },
+    {
+      "id": "layer:documentation-release-history",
+      "name": "Documentation & Release History",
+      "description": "Project onboarding, repository architecture guidance, troubleshooting, and release history for 9routerx.",
+      "nodeIds": [
+        "document:README.md",
+        "document:CLAUDE.md",
+        "document:CHANGELOG.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Project Overview",
+      "description": "README.md introduces 9routerx as a one-command, multi-provider AI gateway setup for local machines and VPS hosts. It also maps the health, model-combo, edge-delivery, release, troubleshooting, and API-key concepts that the remaining steps connect into an operating system.",
+      "nodeIds": [
+        "document:README.md"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Edge Installer Route",
+      "description": "worker.js is the public edge entry point, serving installer and bootstrap scripts while selecting the latest GitHub release when one is available. wrangler.toml binds that script as the Cloudflare Worker deployment entry, showing how the one-command flow begins before code runs on the target machine.",
+      "nodeIds": [
+        "file:worker.js",
+        "config:wrangler.toml"
+      ],
+      "languageLesson": "Wrangler configuration keeps Cloudflare deployment metadata separate from the JavaScript request handler, so routing code and platform settings can evolve independently."
+    },
+    {
+      "order": 3,
+      "title": "Universal Bootstrap",
+      "description": "After the edge route delivers the bootstrap, install-universal.sh selects a release and downloads the required and optional scripts into ~/.9routerx. It uses temporary files, applies executable permissions, and then hands control to the core installer, creating a stable bridge from the public command to versioned release content.",
+      "nodeIds": [
+        "file:install-universal.sh"
+      ],
+      "languageLesson": "A POSIX shell bootstrap can make downloads atomic by writing temporary files before exposing them as executable commands, preventing partial transfers from replacing a usable installer."
+    },
+    {
+      "order": 4,
+      "title": "Core Installation Paths",
+      "description": "install.sh is the topology's broadest file and orchestrates local Cursor, headless Linux, and remote VPS installation as well as cleanup. bootstrap-vps.sh depends on it and replaces its own process with the installer in non-interactive vps-headless mode, keeping the VPS entry point thin while centralizing behavior in one implementation.",
+      "nodeIds": [
+        "file:scripts/install.sh",
+        "file:scripts/bootstrap-vps.sh"
+      ],
+      "languageLesson": "Shell exec replaces the bootstrap process rather than spawning a child, so signals and the final exit status belong directly to the real installer."
+    },
+    {
+      "order": 5,
+      "title": "Gateway Commands and Combos",
+      "description": "Once installation is complete, the 9routerx command becomes the operator-facing control surface for model browsing, combo management, and safe updates. Its direct dependency on combo.py leads to the persisted virtual-model workflows, where users can list, create, test, and delete fallback or round-robin combinations.",
+      "nodeIds": [
+        "file:scripts/9routerx",
+        "file:scripts/combo.py"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Lifecycle Updates",
+      "description": "The topology connects initial setup and daily operation to two maintenance components: install.sh depends on the cron installer, while the 9routerx command depends on auto-update.py. The cron script installs a stable machine-derived daily schedule, and the updater waits for an hour of idle proxy traffic before upgrading the package and restarting its service. Together they keep the gateway current without treating active requests as an acceptable interruption window.",
+      "nodeIds": [
+        "file:scripts/install.sh",
+        "file:scripts/install_auto_update_cron.sh",
+        "file:scripts/9routerx",
+        "file:scripts/auto-update.py"
+      ]
+    },
+    {
+      "order": 7,
+      "title": "Credential Provisioning and Sync",
+      "description": "For a remote gateway, generate-api-key.sh creates a scoped key through the VPS loopback API, enables login enforcement, and emits client configuration guidance. The sync utility then discovers and probes default models or server-defined combos before updating Claude Code, Cursor, and shell profiles; the core installer ties this into its SSH-based credential synchronization path.",
+      "nodeIds": [
+        "file:scripts/generate-api-key.sh",
+        "file:scripts/sync/9router_claude_sync.py",
+        "file:scripts/install.sh"
+      ]
+    },
+    {
+      "order": 8,
+      "title": "Health Checks and Repair",
+      "description": "The installer depends on doctor.sh to verify the system it has assembled rather than assuming setup succeeded. The diagnostic path checks prerequisites, gateway health, client routing, and Linux service persistence, and it can remediate server failures when requested. This closes the operational loop between installation, synchronized credentials, and a reachable gateway.",
+      "nodeIds": [
+        "file:scripts/install.sh",
+        "file:scripts/doctor.sh"
+      ]
+    },
+    {
+      "order": 9,
+      "title": "Release Delivery Loop",
+      "description": "The GitHub Actions pipeline validates shell, Python, Worker, and functional contracts, then permits version tags to create releases only after those checks pass. CHANGELOG.md records installer, edge-route, health, and lifecycle changes, while worker.js resolves the latest release for new bootstrap requests. This capstone connects validated repository changes back to the same edge delivery route where the tour's runtime path began.",
+      "nodeIds": [
+        "pipeline:.github/workflows/ci.yml",
+        "document:CHANGELOG.md",
+        "file:worker.js"
+      ],
+      "languageLesson": "GitHub Actions uses job dependencies and tag predicates to make release publication conditional on earlier validation jobs rather than merely on the presence of a version tag."
+    }
+  ]
+}
